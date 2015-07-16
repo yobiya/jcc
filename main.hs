@@ -21,14 +21,27 @@ readErrorHander fileName error = do
   return ""
 
 -- JSONデータ
-data JsonObject = JsonObject {
-  content :: String
+type JsonObject = [(String, JsonValue)]
+
+data JsonValue = JsonValue {
+  valueType :: String,
+  value     :: String,
+  object    :: Maybe JsonObject,
+  array     :: [JsonValue]
 } deriving (Show)
 
 -- JSONテキストをパースする
 parseJSON :: String -> Either String JsonObject
 parseJSON [] = Left "Empty JSON text"
-parseJSON jsonText = Right JsonObject { content = removeJsonWhiteSpace jsonText }
+parseJSON jsonText = parseJsonObject $ removeJsonWhiteSpace jsonText
+
+-- JSONのオブジェクトをパースする
+parseJsonObject :: String -> Either String JsonObject
+parseJsonObject xs  | head xs == '{' && last xs == '}'  = Right $ parseJsonObjectContents $ (tail . init) xs
+                    | otherwise                         = Left "Not func JSON object {} pair."
+
+parseJsonObjectContents :: String -> JsonObject
+parseJsonObjectContents _ = [("a", JsonValue { valueType="dummy", value="", object=Nothing, array=[]})]
 
 -- JSONテキストから不要なスペースを削除する
 removeJsonWhiteSpace :: String -> String
