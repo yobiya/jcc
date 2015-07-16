@@ -40,13 +40,29 @@ parseJsonObject :: String -> Either String JsonObject
 parseJsonObject xs  | head xs == '{' && last xs == '}'  = Right $ parseJsonObjectContents $ (tail . init) xs
                     | otherwise                         = Left "Not func JSON object {} pair."
 
+-- JSONのオブジェクトの要素をパースする
 parseJsonObjectContents :: String -> JsonObject
-parseJsonObjectContents _ = [("a", JsonValue { valueType="dummy", value="", object=Nothing, array=[]})]
+parseJsonObjectContents text = [("a", JsonValue { valueType="dummy", value=head $ dissolveJsonObjectContentStrings text, object=Nothing, array=[]})]
+
+dissolveJsonObjectContentStrings :: String -> [String]
+dissolveJsonObjectContentStrings ""             = []
+dissolveJsonObjectContentStrings text@('"':xs)  = let index = findIndexWithoutJsonString text ','
+                                                  in (take index text):(dissolveJsonObjectContentStrings $ drop index text)
+
+findIndexWithoutJsonString :: String -> Char -> Int
+findIndexWithoutJsonString xs c = findIndexWithoutJsonString' xs c 0 False
+
+findIndexWithoutJsonString' :: String -> Char -> Int -> Bool -> Int
+findIndexWithoutJsonString' ('"':xs) c index False = findIndexWithoutJsonString' xs c (index + 1) True
+findIndexWithoutJsonString' (x:xs) c index False = if x == c then index else findIndexWithoutJsonString' xs c (index + 1) False
+findIndexWithoutJsonString' ('"':xs) c index True = findIndexWithoutJsonString' xs c (index + 1) False
+findIndexWithoutJsonString' (x:xs) c index True = findIndexWithoutJsonString' xs c (index + 1) True
+
 
 -- JSONテキストから不要なスペースを削除する
 removeJsonWhiteSpace :: String -> String
 removeJsonWhiteSpace []         = []
-removeJsonWhiteSpace ('"':xs)   = '"':skipJsonString xs -- 文字列の先頭が見つかったのでJSONの文字列の処理を行う
+removeJsonWhiteSpace ('"':xs)   = '"':skipJsonString xs removeJsonWhiteSpace  -- 文字列の先頭が見つかったのでJSONの文字列の処理を行う
 removeJsonWhiteSpace (' ':xs)   = removeJsonWhiteSpace xs
 removeJsonWhiteSpace ('\r':xs)  = removeJsonWhiteSpace xs
 removeJsonWhiteSpace ('\n':xs)  = removeJsonWhiteSpace xs
@@ -54,8 +70,8 @@ removeJsonWhiteSpace ('\t':xs)  = removeJsonWhiteSpace xs
 removeJsonWhiteSpace (x:xs)     = x:removeJsonWhiteSpace xs
 
 -- JSONの文字列をスキップする
-skipJsonString :: String -> String
-skipJsonString []           = []
-skipJsonString ('\\':x:xs)  = '\\':x:skipJsonString xs    -- 文字列内のエスケープ処理
-skipJsonString ('"':xs)     = '"':removeJsonWhiteSpace xs -- 文字列の終端に達した
-skipJsonString (x:xs)       = x:skipJsonString xs
+skipJsonString :: String -> (String -> String) -> String
+skipJsonString [] _             = []
+skipJsonString ('\\':x:xs) end  = '\\':x:skipJsonString xs end  -- 文字列内のエスケープ処理
+skipJsonString ('"':xs) end     = '"':end xs                    -- 文字列の終端に達した
+skipJsonString (x:xs) end       = x:skipJsonString xs end
