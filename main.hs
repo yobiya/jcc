@@ -32,13 +32,13 @@ data JsonValue = JsonValue {
 
 -- JSONテキストをパースする
 parseJSON :: String -> Either String JsonObject
-parseJSON [] = Left "Empty JSON text"
+parseJSON "" = Left "JSON text is empty."
 parseJSON jsonText = parseJsonObject $ removeJsonWhiteSpace jsonText
 
 -- JSONのオブジェクトをパースする
 parseJsonObject :: String -> Either String JsonObject
-parseJsonObject xs  | head xs == '{' && last xs == '}'  = Right $ parseJsonObjectContents $ (tail . init) xs
-                    | otherwise                         = Left "Not func JSON object {} pair."
+parseJsonObject (x:xs)  | x == '{' && last xs == '}'  = Right $ parseJsonObjectContents $ init xs
+                        | otherwise                   = Left "Not found JSON object {} pair."
 
 -- JSONのオブジェクトの要素をパースする
 parseJsonObjectContents :: String -> JsonObject
