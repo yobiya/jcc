@@ -13,36 +13,36 @@ data JsonValue = JsonValue {
 -- JSONテキストをパースする
 parseJSON :: String -> Either String JsonObject
 parseJSON "" = Left "JSON text is empty."
-parseJSON jsonText = parseJsonObject $ removeJsonWhiteSpace jsonText
+parseJSON jsonText = parseObject $ removeWhiteSpace jsonText
 
 -- JSONのオブジェクトをパースする
-parseJsonObject :: String -> Either String JsonObject
-parseJsonObject (x:xs)  | x == '{' && last xs == '}'  = Right $ parseJsonObjectContents $ init xs
-                        | otherwise                   = Left "Not found JSON object {} pair."
+parseObject :: String -> Either String JsonObject
+parseObject (x:xs)  | x == '{' && last xs == '}'  = Right $ parseObjectContents $ init xs
+                    | otherwise                   = Left "Not found JSON object {} pair."
 
 -- JSONのオブジェクトの要素をパースする
-parseJsonObjectContents :: String -> JsonObject
-parseJsonObjectContents text = [("a", JsonValue { valueType="dummy", value=head $ dissolveJsonObjectContentStrings text, object=Nothing, array=[]})]
+parseObjectContents :: String -> JsonObject
+parseObjectContents text = [("a", JsonValue { valueType="dummy", value=head $ dissolveObjectContentStrings text, object=Nothing, array=[]})]
 
-dissolveJsonObjectContentStrings :: String -> [String]
-dissolveJsonObjectContentStrings ""       = [""]
-dissolveJsonObjectContentStrings ('"':xs) = let (jsonString, other) = divideJsonString ('"':xs)
-                                            in  let y:ys = dissolveJsonObjectContentStrings other
-                                                in (jsonString ++ y):ys
-dissolveJsonObjectContentStrings (',':xs)   = "":(dissolveJsonObjectContentStrings xs)
-dissolveJsonObjectContentStrings (x:xs)     = let y:ys = dissolveJsonObjectContentStrings xs
-                                              in (x:y):ys
+dissolveObjectContentStrings :: String -> [String]
+dissolveObjectContentStrings ""       = [""]
+dissolveObjectContentStrings ('"':xs) = let (jsonString, other) = divideJsonString ('"':xs)
+                                        in  let y:ys = dissolveObjectContentStrings other
+                                            in (jsonString ++ y):ys
+dissolveObjectContentStrings (',':xs) = "":(dissolveObjectContentStrings xs)
+dissolveObjectContentStrings (x:xs)   = let y:ys = dissolveObjectContentStrings xs
+                                        in (x:y):ys
 
 -- JSONテキストから不要なスペースを削除する
-removeJsonWhiteSpace :: String -> String
-removeJsonWhiteSpace []         = []
-removeJsonWhiteSpace ('"':xs)   = let (jsonString, other) = divideJsonString ('"':xs) -- 文字列の先頭が見つかったのでJSONの文字列の要素は削除しない
-                                  in jsonString ++ (removeJsonWhiteSpace other)
-removeJsonWhiteSpace (' ':xs)   = removeJsonWhiteSpace xs
-removeJsonWhiteSpace ('\r':xs)  = removeJsonWhiteSpace xs
-removeJsonWhiteSpace ('\n':xs)  = removeJsonWhiteSpace xs
-removeJsonWhiteSpace ('\t':xs)  = removeJsonWhiteSpace xs
-removeJsonWhiteSpace (x:xs)     = x:removeJsonWhiteSpace xs
+removeWhiteSpace :: String -> String
+removeWhiteSpace []         = []
+removeWhiteSpace ('"':xs)   = let (jsonString, other) = divideJsonString ('"':xs) -- 文字列の先頭が見つかったのでJSONの文字列の要素は削除しない
+                              in jsonString ++ (removeWhiteSpace other)
+removeWhiteSpace (' ':xs)   = removeWhiteSpace xs
+removeWhiteSpace ('\r':xs)  = removeWhiteSpace xs
+removeWhiteSpace ('\n':xs)  = removeWhiteSpace xs
+removeWhiteSpace ('\t':xs)  = removeWhiteSpace xs
+removeWhiteSpace (x:xs)     = x:removeWhiteSpace xs
 
 -- JSONの文字列を分割する
 divideJsonString :: String -> (String, String)
