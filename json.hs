@@ -1,5 +1,7 @@
 module Json (JsonObject, JsonValue, parseJson) where 
 
+import Debug.Trace
+
 -- JSONデータ
 type JsonPair = (String, JsonValue)
 type JsonObject = [JsonPair]
@@ -64,33 +66,23 @@ parseObjectContents xs  = map parsePair $ divideTopLevel xs ','
 parseArray :: String -> [JsonValue]
 parseArray xs = map parseValue $ divideTopLevel (bracketContent xs '[' ']') ','
 
--- トップレベルにある値で文字列を分割する
+-- トップレベルにある文字で文字列を分割する
 divideTopLevel :: String -> Char -> [String]
-divideTopLevel xs c = divideFromIndexes xs $ findTopLevelIndexes xs c 0 0 0
+divideTopLevel xs c = divideTopLevelWork xs c []
 
-divideFromIndexes :: String -> [(Int, Int)] -> [String]
-divideFromIndexes _ []            = []
-divideFromIndexes text ((s,e):xs) = (drop s (take e text)):(divideFromIndexes text xs)
-
-findTopLevelIndexes :: String -> Char -> Int -> Int -> Int -> [(Int, Int)]
-findTopLevelIndexes "" _ _ index lastIndex                                        = (lastIndex, index):[]
-findTopLevelIndexes text@('"':xs) c level index lastIndex                         = let (jsonString, other) = divideJsonString text
-                                                                                    in  findTopLevelIndexes other c level (index + length jsonString) lastIndex
-findTopLevelIndexes (x:xs) c level index lastIndex        | x == '{'              = findTopLevelIndexes xs c (level + 1) (index + 1) lastIndex
-                                                          | x == '}'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex
-                                                          | x == '['              = findTopLevelIndexes xs c (level + 1) (index + 1) lastIndex
-                                                          | x == ']'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex
-                                                          | x == c && level == 0  = (lastIndex, index):(findTopLevelIndexes xs c 0 (index + 1) (index + 1)) -- 目的の文字が見つかった
-                                                          | otherwise             = findTopLevelIndexes xs c level (index + 1) lastIndex
-
-dissolveObjectContentStrings :: String -> [String]
-dissolveObjectContentStrings ""       = [""]
-dissolveObjectContentStrings ('"':xs) = let (jsonString, other) = divideJsonString ('"':xs)
-                                        in  let y:ys = dissolveObjectContentStrings other
-                                            in (jsonString ++ y):ys
-dissolveObjectContentStrings (',':xs) = "":(dissolveObjectContentStrings xs)
-dissolveObjectContentStrings (x:xs)   = let y:ys = dissolveObjectContentStrings xs
-                                        in (x:y):ys
+divideTopLevelWork :: String -> Char -> [Char] -> [String]
+divideTopLevelWork "" _ _                         = [""]
+divideTopLevelWork ('{':xs) c stack               = let contents = divideTopLevelWork xs c ('}':stack)  -- オブジェクトの開始文字が見つかったので、スタックに終了文字を追加
+                                                    in  ('{':(head contents)):(tail contents)
+divideTopLevelWork ('[':xs) c stack               = let contents = divideTopLevelWork xs c (']':stack)  -- 配列の開始文字が見つかったので、スタックに終了文字を追加
+                                                    in  ('[':(head contents)):(tail contents)
+divideTopLevelWork (x:xs) c []        | x == c    = "":(divideTopLevelWork xs c [])                     -- 目的の文字が見つかった
+                                      | otherwise = let contents = divideTopLevelWork xs c []
+                                                    in  (x:(head contents)):(tail contents)
+divideTopLevelWork (x:xs) c (s:stack) | x == s    = let contents = divideTopLevelWork xs c stack        -- スタックにある文字が見つかったので、スタックから削除
+                                                    in  (x:(head contents)):(tail contents)
+                                      | otherwise = let contents = divideTopLevelWork xs c (s:stack)
+                                                    in  (x:(head contents)):(tail contents)
 
 -- JSONテキストから不要なスペースを削除する
 removeWhiteSpace :: String -> String
