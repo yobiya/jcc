@@ -1,7 +1,5 @@
 module Json (JsonObject, JsonValue, parseJson) where 
 
-import Debug.Trace
-
 -- JSONデータ
 type JsonPair = (String, JsonValue)
 type JsonObject = [JsonPair]
@@ -14,19 +12,16 @@ parseJson text = parseObject $ removeWhiteSpace text
 -- 囲まれている要素を取り出す
 bracketContent :: String -> Char -> Char -> String
 bracketContent text sb eb | sb == eb  = sameBracketContent text sb
-                          | otherwise = bracketContentLevel text sb eb 0
+                          | otherwise = bracketContentLevel text sb eb []
 
 -- 囲まれている階層構造の要素を取り出す
-bracketContentLevel :: String -> Char -> Char -> Int -> String
-bracketContentLevel "" _ _ _                        = ""
-bracketContentLevel (x:xs) sb eb 0      | x == sb   = (bracketContentLevel xs sb eb 1)
-                                        | otherwise = bracketContentLevel xs sb eb 0
-bracketContentLevel (x:xs) sb eb 1      | x == sb   = x:(bracketContentLevel xs sb eb 2)
-                                        | x == eb   = ""
-                                        | otherwise = x:(bracketContentLevel xs sb eb 1)
-bracketContentLevel (x:xs) sb eb level  | x == sb   = x:(bracketContentLevel xs sb eb (level + 1))
-                                        | x == eb   = x:(bracketContentLevel xs sb eb (level - 1))
-                                        | otherwise = x:(bracketContentLevel xs sb eb level)
+bracketContentLevel :: String -> Char -> Char -> [Char] -> String
+bracketContentLevel "" _ _ _                            = ""
+bracketContentLevel (x:xs) sb eb []         | x == sb   = bracketContentLevel xs sb eb (eb:[])
+                                            | otherwise = ""
+bracketContentLevel (x:xs) sb eb (s:stack)  | x == sb   = x:(bracketContentLevel xs sb eb (eb:s:stack))
+                                            | x == s    = x:(bracketContentLevel xs sb eb stack)
+                                            | otherwise = x:(bracketContentLevel xs sb eb (s:stack))
 
 -- 同じ文字で囲まれている要素を取り出す
 sameBracketContent :: String -> Char -> String
