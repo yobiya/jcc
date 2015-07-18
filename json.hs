@@ -1,4 +1,4 @@
-module Json (JsonObject, JsonValue, parseJSON) where 
+module Json (JsonObject, JsonValue, parseJson) where 
 
 -- JSONデータ
 type JsonPair = (String, JsonValue)
@@ -6,8 +6,8 @@ type JsonObject = [JsonPair]
 data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObject JsonObject | JsonArray [JsonValue] | JsonNull deriving (Show)
 
 -- JSONテキストをパースする
-parseJSON :: String -> JsonObject
-parseJSON text = parseObject $ removeWhiteSpace text
+parseJson :: String -> JsonObject
+parseJson text = parseObject $ removeWhiteSpace text
 
 -- 囲まれている要素を取り出す
 bracketContent :: String -> Char -> Char -> String
@@ -66,24 +66,22 @@ parseArray xs = map parseValue $ divideTopLevel (bracketContent xs '[' ']') ','
 
 -- トップレベルにある値で文字列を分割する
 divideTopLevel :: String -> Char -> [String]
-divideTopLevel xs c = divideFromIndexes xs $ findTopLevelIndexes xs c 0 0 0 False
+divideTopLevel xs c = divideFromIndexes xs $ findTopLevelIndexes xs c 0 0 0
 
 divideFromIndexes :: String -> [(Int, Int)] -> [String]
 divideFromIndexes _ []            = []
 divideFromIndexes text ((s,e):xs) = (drop s (take e text)):(divideFromIndexes text xs)
 
-findTopLevelIndexes :: String -> Char -> Int -> Int -> Int -> Bool -> [(Int, Int)]
-findTopLevelIndexes "" _ _ index lastIndex _                                          = (lastIndex, index):[]
-findTopLevelIndexes ('"':xs) c level index lastIndex False                            = findTopLevelIndexes xs c level (index + 1) lastIndex True                     -- 文字列の先頭が見つかった
-findTopLevelIndexes ('\\':x:xs) c level index lastIndex True                          = findTopLevelIndexes xs c level (index + 2) lastIndex True                     -- 文字列中のエスケープ
-findTopLevelIndexes ('"':xs) c level index lastIndex True                             = findTopLevelIndexes xs c level (index + 1) lastIndex False                    -- 文字列の終端が見つかった
-findTopLevelIndexes (x:xs) c level index lastIndex True                               = findTopLevelIndexes xs c level (index + 1) lastIndex True
-findTopLevelIndexes (x:xs) c level index lastIndex False      | x == '{'              = findTopLevelIndexes xs c (level + 1) (index + 1) lastIndex False
-                                                              | x == '}'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex False
-                                                              | x == '['              = findTopLevelIndexes xs c (level + 1) (index + 1) lastIndex False
-                                                              | x == ']'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex False
-                                                              | x == c && level == 0  = (lastIndex, index):(findTopLevelIndexes xs c 0 (index + 1) (index + 1) False) -- 目的の文字が見つかった
-                                                              | otherwise             = findTopLevelIndexes xs c level (index + 1) lastIndex False
+findTopLevelIndexes :: String -> Char -> Int -> Int -> Int -> [(Int, Int)]
+findTopLevelIndexes "" _ _ index lastIndex                                        = (lastIndex, index):[]
+findTopLevelIndexes text@('"':xs) c level index lastIndex                         = let (jsonString, other) = divideJsonString text
+                                                                                    in  findTopLevelIndexes other c level (index + length jsonString) lastIndex
+findTopLevelIndexes (x:xs) c level index lastIndex        | x == '{'              = findTopLevelIndexes xs c (level + 1) (index + 1) lastIndex
+                                                          | x == '}'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex
+                                                          | x == '['              = findTopLevelIndexes xs c (level + 1) (index + 1) lastIndex
+                                                          | x == ']'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex
+                                                          | x == c && level == 0  = (lastIndex, index):(findTopLevelIndexes xs c 0 (index + 1) (index + 1)) -- 目的の文字が見つかった
+                                                          | otherwise             = findTopLevelIndexes xs c level (index + 1) lastIndex
 
 dissolveObjectContentStrings :: String -> [String]
 dissolveObjectContentStrings ""       = [""]

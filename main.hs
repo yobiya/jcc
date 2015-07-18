@@ -12,10 +12,12 @@ main = do
 
   putStrLn constitution
   putStrLn "----------"
-  print $ parseJSON constitution
+  print $ parseJson constitution
   putStrLn "----------"
   putStrLn target
 
+
+-- ファイル読み込みエラー処理
 readErrorHander :: String -> IOError -> IO String
 readErrorHander fileName error = do
   putStrLn $ "Can not open File \"" ++ fileName ++ "\""
