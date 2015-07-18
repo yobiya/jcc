@@ -1,4 +1,4 @@
-module Json (JsonObject, JsonValue, parseJson) where 
+module Json (JsonValue, JsonObject, parseJson) where 
 
 -- JSONデータ
 type JsonPair = (String, JsonValue)

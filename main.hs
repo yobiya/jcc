@@ -3,6 +3,7 @@
 import System.Environment
 import Control.Exception
 import Json
+import Match
 
 main = do
   args <- getArgs
@@ -10,11 +11,8 @@ main = do
   constitution <- catch (readFile constitutionFileName) (readErrorHander constitutionFileName)
   target <- catch (readFile targetFileName) (readErrorHander targetFileName)
 
-  putStrLn constitution
-  putStrLn "----------"
-  print $ parseJson constitution
-  putStrLn "----------"
-  putStrLn target
+  let isMatch = matchConstitution (parseJson constitution) (parseJson target)
+  putStrLn (if isMatch then targetFileName ++ " is match." else targetFileName ++ " is not match.")
 
 
 -- ファイル読み込みエラー処理
