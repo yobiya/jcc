@@ -81,27 +81,17 @@ divideTopLevelWork (x:xs) c (s:stack) | x == s    = let contents = divideTopLeve
 
 -- JSONテキストから不要なスペースを削除する
 removeWhiteSpace :: String -> String
-removeWhiteSpace []         = []
-removeWhiteSpace ('"':xs)   = let (jsonString, other) = divideJsonString ('"':xs) -- 文字列の先頭が見つかったのでJSONの文字列の要素は削除しない
-                              in jsonString ++ (removeWhiteSpace other)
+removeWhiteSpace ""         = ""
+removeWhiteSpace ('"':xs)   = '"':skipJsonString xs
 removeWhiteSpace (' ':xs)   = removeWhiteSpace xs
 removeWhiteSpace ('\r':xs)  = removeWhiteSpace xs
 removeWhiteSpace ('\n':xs)  = removeWhiteSpace xs
 removeWhiteSpace ('\t':xs)  = removeWhiteSpace xs
 removeWhiteSpace (x:xs)     = x:removeWhiteSpace xs
 
--- JSONの文字列を分割する
-divideJsonString :: String -> (String, String)
-divideJsonString ""       = ("", "")
-divideJsonString ('"':xs) = let (as, bs) = divideJsonStringInString xs
-                            in ('"':as, bs)
-divideJsonString (x:xs)   = let (as, bs) = divideJsonString xs
-                            in (x:as, bs)
-
-divideJsonStringInString :: String -> (String, String)
-divideJsonStringInString ""           = ("", "")
-divideJsonStringInString ('\\':x:xs)  = let (as, bs) = divideJsonStringInString xs
-                                        in ('\\':x:as, bs)
-divideJsonStringInString ('"':xs)     = ("\"", xs)                                  -- 文字列の終端が見つかったので終了
-divideJsonStringInString (x:xs)       = let (as, bs) = divideJsonStringInString xs
-                                        in (x:as, bs)
+-- JSONの文字列をスキップする
+skipJsonString :: String -> String
+skipJsonString ""           = ""
+skipJsonString ('"':xs)     = '"':removeWhiteSpace xs
+skipJsonString ('\\':x:xs)  = '\\':x:skipJsonString xs
+skipJsonString (x:xs)       = x:skipJsonString xs
