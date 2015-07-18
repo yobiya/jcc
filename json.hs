@@ -1,7 +1,10 @@
 module Json (JsonObject, JsonValue, parseJSON) where 
--- JSONデータ
 
-type JsonObject = [(String, JsonValue)]
+import Debug.Trace
+
+-- JSONデータ
+type JsonPair = (String, JsonValue)
+type JsonObject = [JsonPair]
 
 data JsonValue = JsonValue {
   valueType :: String,
@@ -17,8 +20,8 @@ parseJSON jsonText = parseObject $ removeWhiteSpace jsonText
 
 -- JSONのオブジェクトをパースする
 parseObject :: String -> Either String JsonObject
-parseObject (x:xs)  | x == '{' && last xs == '}'  = Right $ parseObjectContents $ init xs
-                    | otherwise                   = Left "Not found JSON object {} pair."
+parseObject xs  = let content = bracketContent xs '{' '}'
+                  in  Right $ parseObjectContents content
 
 -- 囲まれている要素を取り出す
 bracketContent :: String -> Char -> Char -> String
@@ -35,9 +38,35 @@ bracketContentLevel (x:xs) sb eb level  | x == sb   = x:(bracketContentLevel xs 
                                         | x == eb   = x:(bracketContentLevel xs sb eb (level - 1))
                                         | otherwise = x:(bracketContentLevel xs sb eb level)
 
+-- キーと値のペアをパースする
+-- @todo 適切な実装を行う
+parsePair :: String -> JsonPair
+parsePair text = (text, JsonValue { valueType="", value="", object=Nothing, array=[] })
+
 -- JSONのオブジェクトの要素をパースする
 parseObjectContents :: String -> JsonObject
-parseObjectContents text = [("a", JsonValue { valueType="dummy", value=head $ dissolveObjectContentStrings text, object=Nothing, array=[]})]
+parseObjectContents xs  = map parsePair $ divideTopLevel xs ','
+
+-- トップレベルにある値で文字列を分割する
+divideTopLevel :: String -> Char -> [String]
+divideTopLevel xs c = divideFromIndexes xs $ findTopLevelIndexes xs c 0 0 0 False
+
+divideFromIndexes :: String -> [(Int, Int)] -> [String]
+divideFromIndexes _ []            = []
+divideFromIndexes text ((s,e):xs) = (drop s (take e text)):(divideFromIndexes text xs)
+
+findTopLevelIndexes :: String -> Char -> Int -> Int -> Int -> Bool -> [(Int, Int)]
+findTopLevelIndexes "" _ _ index lastIndex _                                          = (lastIndex, index):[]
+findTopLevelIndexes ('"':xs) c level index lastIndex False                            = findTopLevelIndexes xs c level (index + 1) lastIndex True                     -- 文字列の先頭が見つかった
+findTopLevelIndexes ('\\':x:xs) c level index lastIndex True                          = findTopLevelIndexes xs c level (index + 2) lastIndex True                     -- 文字列中のエスケープ
+findTopLevelIndexes ('"':xs) c level index lastIndex True                             = findTopLevelIndexes xs c level (index + 1) lastIndex False                    -- 文字列の終端が見つかった
+findTopLevelIndexes (x:xs) c level index lastIndex True                               = findTopLevelIndexes xs c level (index + 1) lastIndex True
+findTopLevelIndexes (x:xs) c level index lastIndex False      | x == '{'              = findTopLevelIndexes xs c (level + 1) (index + 1) lastIndex False
+                                                              | x == '}'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex False
+                                                              | x == '['              = findTopLevelIndexes xs c (level + 1) (index + 1) lastIndex False
+                                                              | x == ']'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex False
+                                                              | x == c && level == 0  = (lastIndex, index):(findTopLevelIndexes xs c 0 (index + 1) (index + 2) False) -- 目的の文字が見つかった
+                                                              | otherwise             = findTopLevelIndexes xs c level (index + 1) lastIndex False
 
 dissolveObjectContentStrings :: String -> [String]
 dissolveObjectContentStrings ""       = [""]
