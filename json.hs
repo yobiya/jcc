@@ -3,23 +3,11 @@ module Json (JsonObject, JsonValue, parseJSON) where
 -- JSONデータ
 type JsonPair = (String, JsonValue)
 type JsonObject = [JsonPair]
-
-data JsonValue = JsonValue {
-  valueType :: String,
-  value     :: String,
-  object    :: Maybe JsonObject,
-  array     :: [JsonValue]
-} deriving (Show)
+data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObject JsonObject | JsonArray [JsonValue] | JsonNull deriving (Show)
 
 -- JSONテキストをパースする
-parseJSON :: String -> Either String JsonObject
-parseJSON "" = Left "JSON text is empty."
-parseJSON jsonText = parseObject $ removeWhiteSpace jsonText
-
--- JSONのオブジェクトをパースする
-parseObject :: String -> Either String JsonObject
-parseObject xs  = let content = bracketContent xs '{' '}'
-                  in  Right $ parseObjectContents content
+parseJSON :: String -> JsonObject
+parseJSON text = parseObject $ removeWhiteSpace text
 
 -- 囲まれている要素を取り出す
 bracketContent :: String -> Char -> Char -> String
@@ -50,16 +38,31 @@ sameBracketContentInBracket (x:xs) c      | x == c    = []
 
 -- キーと値のペアをパースする
 parsePair :: String -> JsonPair
-parsePair text  = let (keyText, valueText) = break (== ':') text
+parsePair text  = let (keyText, ':':valueText) = break (== ':') text
                   in  (bracketContent keyText '"' '"', parseValue valueText)
 
 -- 値をパースする
 parseValue :: String -> JsonValue
-parseValue text = JsonValue { valueType="", value="", object=Nothing, array=[] }
+parseValue text@('{':xs)  = JsonObject $ parseObject text
+parseValue text@('[':xs)  = JsonArray $ parseArray text
+parseValue text@('"':xs)  = JsonString $ bracketContent text '"' '"'
+parseValue "True"         = JsonBool True
+parseValue "False"        = JsonBool False
+parseValue "null"         = JsonNull
+parseValue ""             = JsonNull
+parseValue text           = JsonNumber $ read text
+
+-- JSONのオブジェクトをパースする
+parseObject :: String -> JsonObject
+parseObject xs  = parseObjectContents $ bracketContent xs '{' '}'
 
 -- JSONのオブジェクトの要素をパースする
 parseObjectContents :: String -> JsonObject
 parseObjectContents xs  = map parsePair $ divideTopLevel xs ','
+
+-- JSONの配列をパースする
+parseArray :: String -> [JsonValue]
+parseArray xs = map parseValue $ divideTopLevel (bracketContent xs '[' ']') ','
 
 -- トップレベルにある値で文字列を分割する
 divideTopLevel :: String -> Char -> [String]
