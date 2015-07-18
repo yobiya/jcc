@@ -1,7 +1,5 @@
 module Json (JsonObject, JsonValue, parseJSON) where 
 
-import Debug.Trace
-
 -- JSONデータ
 type JsonPair = (String, JsonValue)
 type JsonObject = [JsonPair]
@@ -25,8 +23,10 @@ parseObject xs  = let content = bracketContent xs '{' '}'
 
 -- 囲まれている要素を取り出す
 bracketContent :: String -> Char -> Char -> String
-bracketContent text sb eb = bracketContentLevel text sb eb 0
+bracketContent text sb eb | sb == eb  = sameBracketContent text sb
+                          | otherwise = bracketContentLevel text sb eb 0
 
+-- 囲まれている階層構造の要素を取り出す
 bracketContentLevel :: String -> Char -> Char -> Int -> String
 bracketContentLevel "" _ _ _                        = ""
 bracketContentLevel (x:xs) sb eb 0      | x == sb   = (bracketContentLevel xs sb eb 1)
@@ -38,10 +38,24 @@ bracketContentLevel (x:xs) sb eb level  | x == sb   = x:(bracketContentLevel xs 
                                         | x == eb   = x:(bracketContentLevel xs sb eb (level - 1))
                                         | otherwise = x:(bracketContentLevel xs sb eb level)
 
+-- 同じ文字で囲まれている要素を取り出す
+sameBracketContent :: String -> Char -> String
+sameBracketContent (x:xs) c | x == c    = sameBracketContentInBracket xs c
+                            | otherwise = sameBracketContent xs c
+
+sameBracketContentInBracket :: String -> Char -> String
+sameBracketContentInBracket ('\\':x:xs) c             = '\\':x:(sameBracketContentInBracket xs c)
+sameBracketContentInBracket (x:xs) c      | x == c    = []
+                                          | otherwise = x:(sameBracketContentInBracket xs c)
+
 -- キーと値のペアをパースする
--- @todo 適切な実装を行う
 parsePair :: String -> JsonPair
-parsePair text = (text, JsonValue { valueType="", value="", object=Nothing, array=[] })
+parsePair text  = let (keyText, valueText) = break (== ':') text
+                  in  (bracketContent keyText '"' '"', parseValue valueText)
+
+-- 値をパースする
+parseValue :: String -> JsonValue
+parseValue text = JsonValue { valueType="", value="", object=Nothing, array=[] }
 
 -- JSONのオブジェクトの要素をパースする
 parseObjectContents :: String -> JsonObject
@@ -65,7 +79,7 @@ findTopLevelIndexes (x:xs) c level index lastIndex False      | x == '{'        
                                                               | x == '}'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex False
                                                               | x == '['              = findTopLevelIndexes xs c (level + 1) (index + 1) lastIndex False
                                                               | x == ']'              = findTopLevelIndexes xs c (level - 1) (index + 1) lastIndex False
-                                                              | x == c && level == 0  = (lastIndex, index):(findTopLevelIndexes xs c 0 (index + 1) (index + 2) False) -- 目的の文字が見つかった
+                                                              | x == c && level == 0  = (lastIndex, index):(findTopLevelIndexes xs c 0 (index + 1) (index + 1) False) -- 目的の文字が見つかった
                                                               | otherwise             = findTopLevelIndexes xs c level (index + 1) lastIndex False
 
 dissolveObjectContentStrings :: String -> [String]
