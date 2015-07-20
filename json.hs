@@ -1,4 +1,10 @@
-module Json (JsonValue, JsonObject, parseJson) where 
+module Json (
+  JsonPair,
+  JsonValue(JsonBool, JsonNumber, JsonString, JsonObject, JsonArray, JsonNull),
+  JsonObject,
+  parseJson,
+  jsonObjectContents
+) where 
 
 -- JSONデータ
 type JsonPair = (String, JsonValue)
@@ -8,6 +14,11 @@ data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObje
 -- JSONテキストをパースする
 parseJson :: String -> JsonObject
 parseJson text = parseObject $ removeWhiteSpace text
+
+-- JsonValueの型がJsonObjectの場合に要素を取り出す
+jsonObjectContents :: JsonValue -> [JsonPair]
+jsonObjectContents (JsonObject o) = o
+jsonObjectContents _              = []
 
 -- 囲まれている要素を取り出す
 bracketContent :: String -> Char -> Char -> String
