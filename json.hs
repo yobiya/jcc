@@ -11,16 +11,33 @@ type JsonPair = (String, JsonValue)
 type JsonObject = [JsonPair]
 data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObject JsonObject | JsonArray [JsonValue] | JsonNull deriving (Show)
 
--- JSONテキストをパースする
+{-
+ - JSONテキストをパースする
+ -
+ - String     JSONテキスト
+ - JsonObject パースされたJSONのオブジェクト
+ -}
 parseJson :: String -> JsonObject
 parseJson text = parseObject $ removeWhiteSpace text
 
--- JsonValueの型がJsonObjectの場合に要素を取り出す
+{-
+ - JsonValueの型がJsonObjectの場合に要素を取り出す
+ -
+ - JsonValue  判定されるJsonValue
+ - [JsonPair] 取り出されたJsonObjectの内容
+ -}
 jsonObjectContents :: JsonValue -> [JsonPair]
 jsonObjectContents (JsonObject o) = o
 jsonObjectContents _              = []
 
--- 囲まれている要素を取り出す
+{-
+ - 囲まれている要素を取り出す
+ -
+ - String 要素を取り出される文字列
+ - Char   囲む開始文字
+ - Char   囲む終了文字
+ - String 取り出された文字列
+ -}
 bracketContent :: String -> Char -> Char -> String
 bracketContent text sb eb | sb == eb  = sameBracketContent text sb
                           | otherwise = bracketContentLevel text sb eb []
