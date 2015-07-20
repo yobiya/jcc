@@ -19,16 +19,11 @@ matchConstitution c t = let types = flattenTypes c
 
 -- 構成条件の型をフラットなリストにする
 flattenTypes :: JsonObject -> [JsonPair]
-flattenTypes c  = let maybeMainType = findJsonPair "main" c
-                      maybeSubTypes = lookup "type" c
-                  in  let mainTypes = maybeToList maybeMainType
-                          subTypes = if isJust maybeSubTypes then jsonObjectContents $ fromJust maybeSubTypes else []
-                      in mainTypes ++ subTypes
+flattenTypes c = (maybeToList $ find (\pair -> "main" == fst pair) c) ++ (maybe [] jsonObjectContents $ lookup "type" c)
 
 -- 指定した名前の型に一致した構成になっているか判定する
 matchTypeFromName :: JsonObject -> [JsonPair] -> String -> Bool
-matchTypeFromName t types typeName  = let maybeType = findJsonPair typeName types
-                                      in  if isJust maybeType then matchType t $ snd $ fromJust maybeType else False
+matchTypeFromName t types typeName  = maybe False (matchType t) $ lookup typeName types
 
 {-
  - 型に一致した構成になっているか判定する
@@ -49,15 +44,5 @@ matchType _ _               = False
  - Bool       一致している場合はTrue
  -}
 matchPair :: JsonPair -> JsonObject -> Bool
-matchPair (key, value) t  = let maybePair = findJsonPair key t
-                            in  isJust maybePair
-
-{-
- - 指定したキーを持つJsonPairを検索する
- -
- - String         キー
- - [JsonPair]     検索対象
- - Maybe JsonPair 見つかった場合はJust JsonPair
- -}
-findJsonPair :: String -> [JsonPair] -> Maybe JsonPair
-findJsonPair key pairs  = find (\pair -> key == fst pair) pairs
+matchPair (key, value) t  = let maybeTValue = lookup key t
+                            in  isJust maybeTValue
