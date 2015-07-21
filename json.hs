@@ -10,6 +10,7 @@ module Json (
 
 -- JSONデータ
 type JsonPair = (String, JsonValue)
+type JsonBool = Bool
 type JsonString = String
 type JsonObject = [JsonPair]
 type JsonArray = [JsonValue]

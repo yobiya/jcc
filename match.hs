@@ -33,20 +33,24 @@ flattenTypes c  = (maybeToList $ find (\pair -> "main" == fst pair) c) ++ (maybe
  - Bool       条件に合っていればTrue
  -}
 matchTypeFromName :: JsonValue -> [JsonPair] -> String -> Bool
-matchTypeFromName t types typeName  = maybe False (matchValueType t) $ lookup typeName types
+matchTypeFromName t types typeName  = maybe False (matchValueType (Just t)) $ lookup typeName types
 
 {-
  - 値が構成に一致しているか判定する
  -
- - JsonValue  判定される値
- - JsonValue  構成情報の値
- - Bool       一致している場合はTrue
+ - Maybe JsonValue  判定される値
+ - JsonValue        構成情報の値
+ - Bool             一致している場合はTrue
  -}
-matchValueType :: JsonValue -> JsonValue -> Bool
-matchValueType t (JsonArray c)                = all id $ map (matchValueType t) c
-matchValueType (JsonObject t) (JsonObject c)  = matchObjectType t c
-matchValueType t c                            = False
-
+matchValueType :: Maybe JsonValue -> JsonValue -> Bool
+matchValueType t (JsonArray c)                              = any id $ map (matchValueType t) c
+matchValueType (Just (JsonObject t)) (JsonObject c)         = matchObjectType t c
+matchValueType (Just (JsonBool t)) (JsonString "bool")      = True
+matchValueType (Just (JsonNumber t)) (JsonString "number")  = True
+matchValueType (Just (JsonString t)) (JsonString "string")  = True
+matchValueType (Just JsonNull) (JsonString "null")          = True
+matchValueType Nothing (JsonString "none")                  = True
+matchValueType _ _                                          = False
 
 {-
  - オブジェクトが構成に一致しているか判定する
@@ -66,5 +70,5 @@ matchObjectType t c = all id $ map (matchPair t) c
  - Bool       一致している場合はTrue
  -}
 matchPair :: JsonObject -> JsonPair -> Bool
-matchPair t (key, value)  = maybe False (\tv -> matchValueType tv value) $ lookup key t
+matchPair t (key, value)  = matchValueType (lookup key t) value
 
