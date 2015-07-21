@@ -11,7 +11,7 @@ main = do
   constitution <- catch (readFile constitutionFileName) (readErrorHander constitutionFileName)
   target <- catch (readFile targetFileName) (readErrorHander targetFileName)
 
-  let isMatch = matchConstitution (parseJson constitution) (parseJson target)
+  let isMatch = matchConstitution (JsonObject (parseJson target)) (parseJson constitution)
   putStrLn (if isMatch then targetFileName ++ " is match." else targetFileName ++ " is not match.")
 
 

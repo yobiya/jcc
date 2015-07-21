@@ -1,14 +1,18 @@
 module Json (
   JsonPair,
   JsonValue(JsonBool, JsonNumber, JsonString, JsonObject, JsonArray, JsonNull),
+  JsonString,
   JsonObject,
+  JsonArray,
   parseJson,
   jsonObjectContents
 ) where 
 
 -- JSONデータ
 type JsonPair = (String, JsonValue)
+type JsonString = String
 type JsonObject = [JsonPair]
+type JsonArray = [JsonValue]
 data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObject JsonObject | JsonArray [JsonValue] | JsonNull deriving (Show)
 
 {-
@@ -42,7 +46,14 @@ bracketContent :: String -> Char -> Char -> String
 bracketContent text sb eb | sb == eb  = sameBracketContent text sb
                           | otherwise = bracketContentLevel text sb eb []
 
--- 囲まれている階層構造の要素を取り出す
+{-
+ - 囲まれている階層構造の要素を取り出す
+ -
+ - String 要素を取り出される文字列
+ - Char   囲む開始文字
+ - Char   囲む終了文字
+ - String 取り出された文字列
+ -}
 bracketContentLevel :: String -> Char -> Char -> [Char] -> String
 bracketContentLevel "" _ _ _                            = ""
 bracketContentLevel (x:xs) sb eb []         | x == sb   = bracketContentLevel xs sb eb (eb:[])
