@@ -60,7 +60,7 @@ bracketContentLevel "" _ _ _                            = ""
 bracketContentLevel (x:xs) sb eb []         | x == sb   = bracketContentLevel xs sb eb (eb:[])
                                             | otherwise = ""
 bracketContentLevel (x:xs) sb eb (s:stack)  | x == sb   = x:(bracketContentLevel xs sb eb (eb:s:stack))
-                                            | x == s    = x:(bracketContentLevel xs sb eb stack)
+                                            | x == s    = (bracketContentLevel xs sb eb stack)
                                             | otherwise = x:(bracketContentLevel xs sb eb (s:stack))
 
 -- 同じ文字で囲まれている要素を取り出す
