@@ -33,42 +33,24 @@ flattenTypes c  = (maybeToList $ find (\pair -> "main" == fst pair) c) ++ (maybe
  - Bool       条件に合っていればTrue
  -}
 matchTypeFromName :: JsonValue -> [JsonPair] -> String -> Bool
-matchTypeFromName t types typeName  = maybe False (matchValueType (Just t)) $ lookup typeName types
+matchTypeFromName t types typeName  = matchValueType types (Just t) $ fromMaybe JsonNull $ lookup typeName types
 
 {-
  - 値が構成に一致しているか判定する
  -
+ - [JsonPair]       構成条件のキーと値のペア
  - Maybe JsonValue  判定される値
  - JsonValue        構成情報の値
  - Bool             一致している場合はTrue
  -}
-matchValueType :: Maybe JsonValue -> JsonValue -> Bool
-matchValueType t (JsonArray c)                              = any id $ map (matchValueType t) c
-matchValueType (Just (JsonObject t)) (JsonObject c)         = matchObjectType t c
-matchValueType (Just (JsonBool t)) (JsonString "bool")      = True
-matchValueType (Just (JsonNumber t)) (JsonString "number")  = True
-matchValueType (Just (JsonString t)) (JsonString "string")  = True
-matchValueType (Just JsonNull) (JsonString "null")          = True
-matchValueType Nothing (JsonString "none")                  = True
-matchValueType _ _                                          = False
-
-{-
- - オブジェクトが構成に一致しているか判定する
- -
- - JsonObject 判定されるオブジェクト
- - JsonObject 構成情報オブジェクト
- - Bool       一致している場合はTrue
- -}
-matchObjectType :: JsonObject -> JsonObject -> Bool
-matchObjectType t c = all id $ map (matchPair t) c
-
-{-
- - 一致するキーと型を持っているか判定する
- -
- - JsonObject 判定される構造
- - JsonPair   構成情報のキーと型のペア
- - Bool       一致している場合はTrue
- -}
-matchPair :: JsonObject -> JsonPair -> Bool
-matchPair t (key, value)  = matchValueType (lookup key t) value
+matchValueType :: [JsonPair] -> Maybe JsonValue -> JsonValue -> Bool
+matchValueType types t (JsonArray c)                          = any id $ map (matchValueType types t) c
+matchValueType types (Just (JsonObject t)) (JsonObject c)     = all id $ map (\(key, value) -> matchValueType types (lookup key t) value) c
+matchValueType _ (Just (JsonBool t)) (JsonString "bool")      = True
+matchValueType _ (Just (JsonNumber t)) (JsonString "number")  = True
+matchValueType _ (Just (JsonString t)) (JsonString "string")  = True
+matchValueType _ (Just JsonNull) (JsonString "null")          = True
+matchValueType _ Nothing (JsonString "none")                  = True
+matchValueType types (Just t) (JsonString c)                  = matchTypeFromName t types c
+matchValueType _ _ _                                          = False
 
