@@ -5,7 +5,8 @@ module Json (
   JsonObject,
   JsonArray,
   parseJson,
-  jsonObjectContents
+  jsonObjectContents,
+  bracketContent 
 ) where 
 
 -- JSONデータ

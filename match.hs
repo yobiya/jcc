@@ -46,7 +46,7 @@ matchTypeFromName t types typeName  = matchType types (Just t) $ fromMaybe JsonN
 matchType :: [JsonPair] -> Maybe JsonValue -> JsonValue -> Bool
 matchType types t (JsonArray c)                       = any id $ map (matchType types t) c
 matchType types (Just (JsonObject t)) (JsonObject c)  = all id $ map (\(key, value) -> matchType types (lookup key t) value) c
-matchType types t (JsonString c)                      = matchTypeFromString types t $ filter (/= ' ') c
+matchType types t (JsonString c)                      = matchTypeWithString types t $ filter (/= ' ') c
 matchType _ _ _                                       = False
 
 {-
@@ -57,12 +57,24 @@ matchType _ _ _                                       = False
  - String           構成情報の文字列
  - Bool             一致している場合はTrue
  -}
-matchTypeFromString :: [JsonPair] -> Maybe JsonValue -> String -> Bool
-matchTypeFromString _ (Just t) "any"                  = True  -- 要素があれば良い
-matchTypeFromString _ (Just (JsonBool t)) "bool"      = True
-matchTypeFromString _ (Just (JsonNumber t)) "number"  = True
-matchTypeFromString _ (Just (JsonString t)) "string"  = True
-matchTypeFromString _ (Just JsonNull) "null"          = True
-matchTypeFromString _ Nothing "none"                  = True  -- 要素が無ければ良い
-matchTypeFromString types (Just t) c                  = matchTypeFromName t types c
-matchTypeFromString _ _ _                             = False
+matchTypeWithString :: [JsonPair] -> Maybe JsonValue -> String -> Bool
+matchTypeWithString _ (Just t) "any"                          = True  -- 要素があれば良い
+matchTypeWithString _ (Just (JsonBool t)) "bool"              = True
+matchTypeWithString _ (Just (JsonNumber t)) "number"          = True
+matchTypeWithString _ (Just (JsonString t)) "string"          = True
+matchTypeWithString _ (Just JsonNull) "null"                  = True
+matchTypeWithString _ Nothing "none"                          = True  -- 要素が無ければ良い
+matchTypeWithString types (Just (JsonArray t)) text@('[':xs)  = matchArrayTypeWithString types t $ bracketContent text '[' ']'
+matchTypeWithString types (Just t) c                          = matchTypeFromName t types c
+matchTypeWithString _ _ _                                     = False
+
+{-
+ - 配列の値が構成に一致しているか判定する
+ -
+ - [JsonPair] 構成条件のキーと値のペア
+ - JsonArray  判定される配列の値
+ - String     構成情報の文字列
+ - Bool       一致している場合はTrue
+ -}
+matchArrayTypeWithString :: [JsonPair] -> JsonArray -> String -> Bool
+matchArrayTypeWithString types t c = all id $ map (\target -> matchTypeWithString types (Just target) c) t
