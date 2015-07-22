@@ -1,0 +1,17 @@
+{
+  "version": 0,
+  "type": {
+    "Scale": {
+      "x": "number",
+      "y": "number",
+      "z": "number"
+    }
+  },
+  "main": {
+    "version": "number",
+    "name": ["string", "[string]"],
+    "ids": "[number]",
+    "scale": ["none", "number", "Scale"],
+    "data": "any"
+  }
+}

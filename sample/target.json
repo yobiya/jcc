@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "name": "test",
+  "ids": [1, 2],
+  "scale": {
+    "x": 1, "y": 1, "z": 2
+  },
+  "data": "aaa"
+}
