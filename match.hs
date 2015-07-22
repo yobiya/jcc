@@ -33,7 +33,7 @@ flattenTypes c  = (maybeToList $ find (\pair -> "main" == fst pair) c) ++ (maybe
  - Bool       条件に合っていればTrue
  -}
 matchTypeFromName :: JsonValue -> [JsonPair] -> String -> Bool
-matchTypeFromName t types typeName  = matchValueType types (Just t) $ fromMaybe JsonNull $ lookup typeName types
+matchTypeFromName t types typeName  = matchType types (Just t) $ fromMaybe JsonNull $ lookup typeName types
 
 {-
  - 値が構成に一致しているか判定する
@@ -43,14 +43,26 @@ matchTypeFromName t types typeName  = matchValueType types (Just t) $ fromMaybe 
  - JsonValue        構成情報の値
  - Bool             一致している場合はTrue
  -}
-matchValueType :: [JsonPair] -> Maybe JsonValue -> JsonValue -> Bool
-matchValueType types t (JsonArray c)                          = any id $ map (matchValueType types t) c
-matchValueType types (Just (JsonObject t)) (JsonObject c)     = all id $ map (\(key, value) -> matchValueType types (lookup key t) value) c
-matchValueType _ (Just (JsonBool t)) (JsonString "bool")      = True
-matchValueType _ (Just (JsonNumber t)) (JsonString "number")  = True
-matchValueType _ (Just (JsonString t)) (JsonString "string")  = True
-matchValueType _ (Just JsonNull) (JsonString "null")          = True
-matchValueType _ Nothing (JsonString "none")                  = True
-matchValueType types (Just t) (JsonString c)                  = matchTypeFromName t types c
-matchValueType _ _ _                                          = False
+matchType :: [JsonPair] -> Maybe JsonValue -> JsonValue -> Bool
+matchType types t (JsonArray c)                       = any id $ map (matchType types t) c
+matchType types (Just (JsonObject t)) (JsonObject c)  = all id $ map (\(key, value) -> matchType types (lookup key t) value) c
+matchType types t (JsonString c)                      = matchTypeFromString types t $ filter (/= ' ') c
+matchType _ _ _                                       = False
 
+{-
+ - 値が文字列で表される構成に一致しているか判定する
+ -
+ - [JsonPair]       構成条件のキーと値のペア
+ - Maybe JsonValue  判定される値
+ - String           構成情報の文字列
+ - Bool             一致している場合はTrue
+ -}
+matchTypeFromString :: [JsonPair] -> Maybe JsonValue -> String -> Bool
+matchTypeFromString _ (Just t) "any"                  = True  -- 要素があれば良い
+matchTypeFromString _ (Just (JsonBool t)) "bool"      = True
+matchTypeFromString _ (Just (JsonNumber t)) "number"  = True
+matchTypeFromString _ (Just (JsonString t)) "string"  = True
+matchTypeFromString _ (Just JsonNull) "null"          = True
+matchTypeFromString _ Nothing "none"                  = True  -- 要素が無ければ良い
+matchTypeFromString types (Just t) c                  = matchTypeFromName t types c
+matchTypeFromString _ _ _                             = False
