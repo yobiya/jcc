@@ -9,6 +9,8 @@ module Json (
   bracketContent 
 ) where 
 
+import Data.Either
+
 -- JSONデータ
 type JsonPair = (String, JsonValue)
 type JsonBool = Bool
@@ -23,7 +25,7 @@ data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObje
  - String     JSONテキスト
  - JsonObject パースされたJSONのオブジェクト
  -}
-parseJson :: String -> JsonObject
+parseJson :: String -> Either String JsonObject
 parseJson text = parseObject $ removeWhiteSpace text
 
 {-
@@ -78,32 +80,37 @@ sameBracketContentInBracket (x:xs) c      | x == c    = []
                                           | otherwise = x:(sameBracketContentInBracket xs c)
 
 -- キーと値のペアをパースする
-parsePair :: String -> JsonPair
-parsePair text  = let (keyText, ':':valueText) = break (== ':') text
-                  in  (bracketContent keyText '"' '"', parseValue valueText)
+parsePair :: String -> Either String JsonPair
+parsePair text  = case break (== ':') text of
+                    (_, "")                   ->  Left "error"
+                    (keyText, ':':valueText)  ->  takeLeft (\x -> Right (bracketContent keyText '"' '"', x)) $ parseValue valueText
 
 -- 値をパースする
-parseValue :: String -> JsonValue
-parseValue text@('{':xs)  = JsonObject $ parseObject text
-parseValue text@('[':xs)  = JsonArray $ parseArray text
-parseValue text@('"':xs)  = JsonString $ bracketContent text '"' '"'
-parseValue "True"         = JsonBool True
-parseValue "False"        = JsonBool False
-parseValue "null"         = JsonNull
-parseValue ""             = JsonNull
-parseValue text           = JsonNumber $ read text
+parseValue :: String -> Either String JsonValue
+parseValue text@('{':xs)  = takeLeft (\x -> Right $ otov x) $ parseObject text
+parseValue text@('[':xs)  = takeLeft (\x -> Right $ atov x) $ parseArray text
+parseValue text@('"':xs)  = Right $ JsonString $ bracketContent text '"' '"'
+parseValue "True"         = Right $ JsonBool True
+parseValue "False"        = Right $ JsonBool False
+parseValue "null"         = Right JsonNull
+parseValue ""             = Left "error"
+parseValue text           = Right $ JsonNumber $ read text
 
 -- JSONのオブジェクトをパースする
-parseObject :: String -> JsonObject
+parseObject :: String -> Either String JsonObject
 parseObject xs  = parseObjectContents $ bracketContent xs '{' '}'
 
 -- JSONのオブジェクトの要素をパースする
-parseObjectContents :: String -> JsonObject
-parseObjectContents xs  = map parsePair $ divideTopLevel xs ','
+parseObjectContents :: String -> Either String JsonObject
+parseObjectContents xs  = case partitionEithers $ map parsePair $ divideTopLevel xs ',' of
+                          ([], x)   -> Right x
+                          (x:xs, _) -> Left x
 
 -- JSONの配列をパースする
-parseArray :: String -> [JsonValue]
-parseArray xs = map parseValue $ divideTopLevel (bracketContent xs '[' ']') ','
+parseArray :: String -> Either String [JsonValue]
+parseArray xs = case partitionEithers $ map parseValue $ divideTopLevel (bracketContent xs '[' ']') ',' of
+                ([], x)   -> Right x
+                (x:xs, _) -> Left x
 
 -- トップレベルにある文字で文字列を分割する
 divideTopLevel :: String -> Char -> [String]
@@ -139,3 +146,18 @@ skipJsonString ""           = ""
 skipJsonString ('"':xs)     = '"':removeWhiteSpace xs
 skipJsonString ('\\':x:xs)  = '\\':x:skipJsonString xs
 skipJsonString (x:xs)       = x:skipJsonString xs
+
+{-
+ - EitherがLeftならLeftを返し、Rightなら関数を適用して返す
+ -}
+takeLeft :: (b -> Either a c) -> Either a b -> Either a c
+takeLeft _ (Left x)   = Left x
+takeLeft f (Right x)  = f x
+
+-- JsonObjectをJsonValueに変関する
+otov :: JsonObject -> JsonValue
+otov x = JsonObject x
+
+-- JsonArrayをJsonValueに変関する
+atov :: JsonArray -> JsonValue
+atov x = JsonArray x

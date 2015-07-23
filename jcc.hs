@@ -2,6 +2,7 @@
 
 import System.Environment
 import Control.Exception
+import Data.Either
 import Json
 import Match
 
@@ -11,9 +12,12 @@ main = do
   constitution <- catch (readFile constitutionFileName) (readErrorHander constitutionFileName)
   target <- catch (readFile targetFileName) (readErrorHander targetFileName)
 
-  let isMatch = matchConstitution (JsonObject (parseJson target)) (parseJson constitution)
-  putStrLn (if isMatch then targetFileName ++ " is match." else targetFileName ++ " is not match.")
+  let jsons = map parseJson (constitution:target:[])
+  putStrLn $ message (partitionEithers jsons) targetFileName
 
+message :: ([String], [JsonObject]) -> String -> String
+message ([], xs) targetFileName = let isMatch = matchConstitution ((\x -> (JsonObject x)) $ xs!!1) (xs!!0)
+                                  in  if isMatch then targetFileName ++ " is match." else targetFileName ++ " is not match."
 
 -- ファイル読み込みエラー処理
 readErrorHander :: String -> IOError -> IO String
