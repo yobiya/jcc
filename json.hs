@@ -104,13 +104,13 @@ parseObject xs  = parseObjectContents $ bracketContent xs '{' '}'
 parseObjectContents :: String -> Either String JsonObject
 parseObjectContents xs  = case partitionEithers $ map parsePair $ divideTopLevel xs ',' of
                           ([], x)   -> Right x
-                          (x:xs, _) -> Left x
+                          (x:_, _)  -> Left x
 
 -- JSONの配列をパースする
 parseArray :: String -> Either String [JsonValue]
 parseArray xs = case partitionEithers $ map parseValue $ divideTopLevel (bracketContent xs '[' ']') ',' of
                 ([], x)   -> Right x
-                (x:xs, _) -> Left x
+                (x:_, _)  -> Left x
 
 -- トップレベルにある文字で文字列を分割する
 divideTopLevel :: String -> Char -> [String]

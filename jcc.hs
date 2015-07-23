@@ -18,6 +18,7 @@ main = do
 message :: ([String], [JsonObject]) -> String -> String
 message ([], xs) targetFileName = let isMatch = matchConstitution ((\x -> (JsonObject x)) $ xs!!1) (xs!!0)
                                   in  if isMatch then targetFileName ++ " is match." else targetFileName ++ " is not match."
+message (x:_, _) targetFileName = x
 
 -- ファイル読み込みエラー処理
 readErrorHander :: String -> IOError -> IO String
