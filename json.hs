@@ -83,12 +83,12 @@ sameBracketContentInBracket (x:xs) c      | x == c    = []
 parsePair :: String -> Either String JsonPair
 parsePair text  = case break (== ':') text of
                     (_, "")                   ->  Left "error"
-                    (keyText, ':':valueText)  ->  takeLeft (\x -> Right (bracketContent keyText '"' '"', x)) $ parseValue valueText
+                    (keyText, ':':valueText)  ->  fmap (\x -> (bracketContent keyText '"' '"', x)) $ parseValue valueText
 
 -- 値をパースする
 parseValue :: String -> Either String JsonValue
-parseValue text@('{':xs)  = takeLeft (\x -> Right $ otov x) $ parseObject text
-parseValue text@('[':xs)  = takeLeft (\x -> Right $ atov x) $ parseArray text
+parseValue text@('{':xs)  = fmap (\x -> (JsonObject x)) $ parseObject text
+parseValue text@('[':xs)  = fmap (\x -> (JsonArray x)) $ parseArray text
 parseValue text@('"':xs)  = Right $ JsonString $ bracketContent text '"' '"'
 parseValue "True"         = Right $ JsonBool True
 parseValue "False"        = Right $ JsonBool False
@@ -146,18 +146,3 @@ skipJsonString ""           = ""
 skipJsonString ('"':xs)     = '"':removeWhiteSpace xs
 skipJsonString ('\\':x:xs)  = '\\':x:skipJsonString xs
 skipJsonString (x:xs)       = x:skipJsonString xs
-
-{-
- - EitherがLeftならLeftを返し、Rightなら関数を適用して返す
- -}
-takeLeft :: (b -> Either a c) -> Either a b -> Either a c
-takeLeft _ (Left x)   = Left x
-takeLeft f (Right x)  = f x
-
--- JsonObjectをJsonValueに変関する
-otov :: JsonObject -> JsonValue
-otov x = JsonObject x
-
--- JsonArrayをJsonValueに変関する
-atov :: JsonArray -> JsonValue
-atov x = JsonArray x
