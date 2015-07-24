@@ -84,8 +84,8 @@ sameBracketContentInBracket _ _                       = Nothing
 -- キーと値のペアをパースする
 parsePair :: String -> Either String JsonPair
 parsePair text  = case break (== ':') text of
-                  (_, "")                   ->  Left "error"
                   (keyText, ':':valueText)  ->  maybe (emNonBracketPair '"' '"') (\b -> fmap (\x -> (b, x)) $ parseValue valueText) $ bracketContent keyText '"' '"'
+                  (text, _)                 ->  emNonObjectKeyValuePair text
 
 -- 値をパースする
 parseValue :: String -> Either String JsonValue
@@ -95,7 +95,7 @@ parseValue text@('"':xs)  = maybe (emNonBracketPair '"' '"') (\x -> Right $ Json
 parseValue "True"         = Right $ JsonBool True
 parseValue "False"        = Right $ JsonBool False
 parseValue "null"         = Right JsonNull
-parseValue ""             = Left "error"
+parseValue ""             = emNonValue
 parseValue text           = Right $ JsonNumber $ read text
 
 -- JSONのオブジェクトをパースする
@@ -125,7 +125,7 @@ divideTopLevel :: String -> Char -> Either String [String]
 divideTopLevel xs c = divideTopLevelWork xs c []
 
 divideTopLevelWork :: String -> Char -> [Char] -> Either String [String]
-divideTopLevelWork "" _ (s:stack)                 = Left "error"                                                -- スタック終端文字が残っている場合はエラー
+divideTopLevelWork "" _ (s:stack)                 = emNonCloseBracket s                                         -- スタック終端文字が残っている場合はエラー
 divideTopLevelWork "" _ _                         = Right [""]
 divideTopLevelWork ('{':xs) c stack               = addRightFirstHead '{' $ divideTopLevelWork xs c ('}':stack) -- オブジェクトの開始文字が見つかったので、スタックに終了文字を追加
 divideTopLevelWork ('[':xs) c stack               = addRightFirstHead '[' $ divideTopLevelWork xs c (']':stack) -- 配列の開始文字が見つかったので、スタックに終了文字を追加
