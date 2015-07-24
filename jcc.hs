@@ -3,8 +3,10 @@
 import System.Environment
 import Control.Exception
 import Data.Either
+import Data.List
 import Json
 import Match
+import Message
 
 main = do
   args <- getArgs
@@ -12,13 +14,17 @@ main = do
   constitution <- catch (readFile constitutionFileName) (readErrorHander constitutionFileName)
   target <- catch (readFile targetFileName) (readErrorHander targetFileName)
 
-  let jsons = map parseJson (constitution:target:[])
-  putStrLn $ message (partitionEithers jsons) targetFileName
+  putStrLn $ match $ zip (constitutionFileName:targetFileName:[]) $ map parseJson (constitution:target:[])
 
-message :: ([String], [JsonObject]) -> String -> String
-message ([], xs) targetFileName = let isMatch = matchConstitution ((\x -> (JsonObject x)) $ xs!!1) (xs!!0)
-                                  in  if isMatch then targetFileName ++ " is match." else targetFileName ++ " is not match."
-message (x:_, _) targetFileName = x
+-- 構成が正しいか判定する
+match :: [(String, Either String JsonObject)] -> String
+match xs  = case find (\(n, e) -> isLeft e) xs of
+              Just (n, e) ->  emParseError n e
+              Nothing     ->  let (_, Right c) = xs!!0
+                                  (tn, Right t) = xs!!1
+                              in  case matchConstitution ((\x -> (JsonObject x)) t) c of
+                                  True  -> tn ++ " is match."
+                                  False -> tn ++ " is no tmatch."
 
 -- ファイル読み込みエラー処理
 readErrorHander :: String -> IOError -> IO String
