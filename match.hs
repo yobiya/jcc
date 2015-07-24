@@ -64,7 +64,7 @@ matchTypeWithString _ (Just (JsonNumber t)) "number"          = True
 matchTypeWithString _ (Just (JsonString t)) "string"          = True
 matchTypeWithString _ (Just JsonNull) "null"                  = True
 matchTypeWithString _ Nothing "none"                          = True  -- 要素が無ければ良い
-matchTypeWithString types (Just (JsonArray t)) text@('[':xs)  = matchArrayTypeWithString types t $ bracketContent text '[' ']'
+matchTypeWithString types (Just (JsonArray t)) text@('[':xs)  = maybe False (matchArrayTypeWithString types t) $ bracketContent text '[' ']'
 matchTypeWithString types (Just t) c                          = matchTypeFromName t types c
 matchTypeWithString _ _ _                                     = False
 
