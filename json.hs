@@ -102,35 +102,50 @@ parseObject xs  = parseObjectContents $ bracketContent xs '{' '}'
 
 -- JSONのオブジェクトの要素をパースする
 parseObjectContents :: String -> Either String JsonObject
-parseObjectContents xs  = case partitionEithers $ map parsePair $ divideTopLevel xs ',' of
-                          ([], x)   -> Right x
-                          (x:_, _)  -> Left x
+parseObjectContents xs  = case divideTopLevel xs ',' of
+                          Left x  ->  Left x
+                          Right x ->  case partitionEithers $ map parsePair x of
+                                      ([], x)   -> Right x
+                                      (x:_, _)  -> Left x
 
 -- JSONの配列をパースする
 parseArray :: String -> Either String [JsonValue]
-parseArray xs = case partitionEithers $ map parseValue $ divideTopLevel (bracketContent xs '[' ']') ',' of
-                ([], x)   -> Right x
-                (x:_, _)  -> Left x
+parseArray xs = case divideTopLevel (bracketContent xs '[' ']') ',' of
+                Left x  ->  Left x
+                Right x ->  case partitionEithers $ map parseValue x of
+                            ([], x)   -> Right x
+                            (x:_, _)  -> Left x
 
 -- トップレベルにある文字で文字列を分割する
-divideTopLevel :: String -> Char -> [String]
+divideTopLevel :: String -> Char -> Either String [String]
 divideTopLevel xs c = divideTopLevelWork xs c []
 
-divideTopLevelWork :: String -> Char -> [Char] -> [String]
-divideTopLevelWork "" _ _                         = [""]
-divideTopLevelWork ('{':xs) c stack               = let contents = divideTopLevelWork xs c ('}':stack)  -- オブジェクトの開始文字が見つかったので、スタックに終了文字を追加
-                                                    in  ('{':(head contents)):(tail contents)
-divideTopLevelWork ('[':xs) c stack               = let contents = divideTopLevelWork xs c (']':stack)  -- 配列の開始文字が見つかったので、スタックに終了文字を追加
-                                                    in  ('[':(head contents)):(tail contents)
-divideTopLevelWork (x:xs) c []        | x == c    = "":(divideTopLevelWork xs c [])                     -- 目的の文字が見つかった
-                                      | otherwise = let contents = divideTopLevelWork xs c []
-                                                    in  (x:(head contents)):(tail contents)
-divideTopLevelWork (x:xs) c (s:stack) | x == s    = let contents = divideTopLevelWork xs c stack        -- スタックにある文字が見つかったので、スタックから削除
-                                                    in  (x:(head contents)):(tail contents)
-                                      | otherwise = let contents = divideTopLevelWork xs c (s:stack)
-                                                    in  (x:(head contents)):(tail contents)
+divideTopLevelWork :: String -> Char -> [Char] -> Either String [String]
+divideTopLevelWork "" _ (s:stack)                 = Left "error"                                                -- スタック終端文字が残っている場合はエラー
+divideTopLevelWork "" _ s                         = Right [""]
+divideTopLevelWork ('{':xs) c stack               = addRightFirstHead '{' $ divideTopLevelWork xs c ('}':stack) -- オブジェクトの開始文字が見つかったので、スタックに終了文字を追加
+divideTopLevelWork ('[':xs) c stack               = addRightFirstHead '[' $ divideTopLevelWork xs c (']':stack) -- 配列の開始文字が見つかったので、スタックに終了文字を追加
+divideTopLevelWork (x:xs) c []        | x == c    = fmap (\x -> "":x) $ divideTopLevelWork xs c []              -- 目的の文字が見つかった
+                                      | otherwise = addRightFirstHead x $ divideTopLevelWork xs c []
+divideTopLevelWork (x:xs) c (s:stack) | x == s    = addRightFirstHead x $ divideTopLevelWork xs c stack         -- スタックにある文字が見つかったので、スタックから削除
+                                      | otherwise = addRightFirstHead x $ divideTopLevelWork xs c (s:stack)
 
--- JSONテキストから不要なスペースを削除する
+{-
+ - Right の二重リストの先頭に要素を追加する
+ -
+ - a              追加する要素
+ - Either b [[a]] 対象のEither
+ - Either b [[a]] 追加された結果
+ -}
+addRightFirstHead :: a -> Either b [[a]] -> Either b [[a]]
+addRightFirstHead a e = fmap (\(x:xs) -> (a:x):xs) e
+
+{-
+ - JSONテキストから不要なスペースを削除する
+ -
+ - String 元の文字列
+ - String スペースの削除された文字列
+ -}
 removeWhiteSpace :: String -> String
 removeWhiteSpace ""         = ""
 removeWhiteSpace ('"':xs)   = '"':skipJsonString xs

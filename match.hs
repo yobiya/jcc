@@ -44,8 +44,8 @@ matchTypeFromName t types typeName  = matchType types (Just t) $ fromMaybe JsonN
  - Bool             一致している場合はTrue
  -}
 matchType :: [JsonPair] -> Maybe JsonValue -> JsonValue -> Bool
-matchType types t (JsonArray c)                       = any id $ map (matchType types t) c
-matchType types (Just (JsonObject t)) (JsonObject c)  = all id $ map (\(key, value) -> matchType types (lookup key t) value) c
+matchType types t (JsonArray c)                       = any (matchType types t) c
+matchType types (Just (JsonObject t)) (JsonObject c)  = all (\(key, value) -> matchType types (lookup key t) value) c
 matchType types t (JsonString c)                      = matchTypeWithString types t $ filter (/= ' ') c
 matchType _ _ _                                       = False
 
