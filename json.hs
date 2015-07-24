@@ -100,7 +100,7 @@ parseValue text           = Right $ JsonNumber $ read text
 
 -- JSONのオブジェクトをパースする
 parseObject :: String -> Either String JsonObject
-parseObject xs  = maybe (Left "error") parseObjectContents (bracketContent xs '{' '}')
+parseObject xs  = maybe (emNonBracketPair '{' '}') parseObjectContents (bracketContent xs '{' '}')
 
 -- JSONのオブジェクトの要素をパースする
 parseObjectContents :: String -> Either String JsonObject
@@ -113,7 +113,7 @@ parseObjectContents xs  = case divideTopLevel xs ',' of
 -- JSONの配列をパースする
 parseArray :: String -> Either String [JsonValue]
 parseArray xs = case bracketContent xs '[' ']' of
-                Nothing ->  Left "error"
+                Nothing ->  emNonBracketPair '[' ']'
                 Just x  ->  case divideTopLevel x ',' of
                             Left x  ->  Left x
                             Right x ->  case partitionEithers $ map parseValue x of
