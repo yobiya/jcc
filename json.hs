@@ -1,6 +1,6 @@
 module Json (
   JsonPair,
-  JsonValue(JsonBool, JsonNumber, JsonString, JsonObject, JsonArray, JsonNull),
+  JsonValue(..),
   JsonString,
   JsonObject,
   JsonArray,
@@ -10,6 +10,7 @@ module Json (
 ) where 
 
 import Data.Either
+import Message
 
 -- JSONデータ
 type JsonPair = (String, JsonValue)
@@ -78,18 +79,19 @@ sameBracketContentInBracket :: String -> Char -> Maybe String
 sameBracketContentInBracket ('\\':x:xs) c             = fmap (\y -> '\\':x:y) $ sameBracketContentInBracket xs c
 sameBracketContentInBracket (x:xs) c      | x == c    = Just ""
                                           | otherwise = fmap (\y -> x:y) $ sameBracketContentInBracket xs c
+sameBracketContentInBracket _ _                       = Nothing
 
 -- キーと値のペアをパースする
 parsePair :: String -> Either String JsonPair
 parsePair text  = case break (== ':') text of
                   (_, "")                   ->  Left "error"
-                  (keyText, ':':valueText)  ->  maybe (Left "error") (\b -> fmap (\x -> (b, x)) $ parseValue valueText) $ bracketContent keyText '"' '"'
+                  (keyText, ':':valueText)  ->  maybe (emNonBracketPair '"' '"') (\b -> fmap (\x -> (b, x)) $ parseValue valueText) $ bracketContent keyText '"' '"'
 
 -- 値をパースする
 parseValue :: String -> Either String JsonValue
 parseValue text@('{':xs)  = fmap (\x -> (JsonObject x)) $ parseObject text
 parseValue text@('[':xs)  = fmap (\x -> (JsonArray x)) $ parseArray text
-parseValue text@('"':xs)  = maybe (Left "error") (\x -> Right $ JsonString x) $ bracketContent text '"' '"'
+parseValue text@('"':xs)  = maybe (emNonBracketPair '"' '"') (\x -> Right $ JsonString x) $ bracketContent text '"' '"'
 parseValue "True"         = Right $ JsonBool True
 parseValue "False"        = Right $ JsonBool False
 parseValue "null"         = Right JsonNull
