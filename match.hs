@@ -50,7 +50,7 @@ matchType types (Just (JsonObject t)) (JsonObject c)  = case filter (not . isMat
                                                         e:es  -> e
 matchType types t (JsonString c)                      = matchTypeWithString types t $ filter (/= ' ') c
 matchType _ Nothing _                                 = "error"
-matchType _ (Just t) c                                = (show t) ++ " is not match."
+matchType _ (Just t) c                                = "Not found " ++ valueToText t ++ " match pattern."
 
 {-
  - 値が文字列で表される構成に一致しているか判定する

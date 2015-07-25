@@ -6,7 +6,8 @@ module Json (
   JsonArray,
   parseJson,
   jsonObjectContents,
-  bracketContent 
+  bracketContent,
+  valueToText
 ) where 
 
 import Data.Either
@@ -165,3 +166,24 @@ skipJsonString ""           = ""
 skipJsonString ('"':xs)     = '"':removeWhiteSpace xs
 skipJsonString ('\\':x:xs)  = '\\':x:skipJsonString xs
 skipJsonString (x:xs)       = x:skipJsonString xs
+
+{-
+ - JsonValueの内容をJSONのテキストに変換する
+ -
+ - JsonValue  変換元の値
+ - String     JSONテキスト
+ -}
+valueToText :: JsonValue -> String
+valueToText (JsonObject o)  = "{ " ++ (foldl1 (\x y -> x ++ ", " ++ y) $ map pairToText o) ++ " }"
+valueToText (JsonNumber n)  = show n
+valueToText (JsonString s)  = show s
+valueToText v               = show v
+
+{-
+ - JsonPairの内容をJSONのテキストに変換する
+ -
+ - JsonPair 変換元のペア
+ - String   JSONテキスト
+ -}
+pairToText :: JsonPair -> String
+pairToText (key, value) = key ++ ": " ++ valueToText value
