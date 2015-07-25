@@ -26,8 +26,8 @@ match xs  = case find (\(n, e) -> isLeft e) xs of
             Nothing     ->  let (_, Right c) = xs!!0
                                 (tn, Right t) = xs!!1
                             in  case matchConstitution ((\x -> (JsonObject x)) t) c of
-                                True  -> tn ++ " is match."
-                                False -> tn ++ " is no tmatch."
+                                ""  -> tn ++ " is match."
+                                e   -> tn ++ " is no tmatch : " ++ e
 
 -- ファイル読み込みエラー処理
 readErrorHander :: String -> IOError -> IO String
