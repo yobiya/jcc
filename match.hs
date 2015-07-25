@@ -4,6 +4,7 @@ import Data.Data
 import Data.Maybe
 import Data.List
 import Json
+import Message
 
 {-
  - JSONの構成が条件に合っているか判定する
@@ -41,10 +42,15 @@ matchTypeFromName t types typeName  = matchType types (Just t) $ fromMaybe JsonN
  - String           条件に合っていなければエラーメッセージ
  -}
 matchType :: [JsonPair] -> Maybe JsonValue -> JsonValue -> String
-matchType types t (JsonArray c)                       = if any (\s -> s == "") $ map (matchType types t) c then "" else "error"
-matchType types (Just (JsonObject t)) (JsonObject c)  = if all (\s -> s == "") $ map (\(key, value) -> matchType types (lookup key t) value) c then "" else "error"
+matchType types t (JsonArray c)                       = case partition isMatchMessage $ map (matchType types t) c of
+                                                        ([], e:es)  -> e      -- 配列の中のどれともマッチしなかった
+                                                        _           -> mMatch -- 配列の中のどれかにマッチした
+matchType types (Just (JsonObject t)) (JsonObject c)  = case filter (not . isMatchMessage) $ map (\(key, value) -> matchType types (lookup key t) value) c of
+                                                        []    -> mMatch
+                                                        e:es  -> e
 matchType types t (JsonString c)                      = matchTypeWithString types t $ filter (/= ' ') c
-matchType _ _ _                                       = "error"
+matchType _ Nothing _                                 = "error"
+matchType _ (Just t) c                                = (show t) ++ " is not match."
 
 {-
  - 値が文字列で表される構成に一致しているか判定する
@@ -55,13 +61,13 @@ matchType _ _ _                                       = "error"
  - String           条件に合っていなければエラーメッセージ
  -}
 matchTypeWithString :: [JsonPair] -> Maybe JsonValue -> String -> String
-matchTypeWithString _ (Just t) "any"                          = ""  -- 要素があれば良い
-matchTypeWithString _ (Just (JsonBool t)) "bool"              = ""
-matchTypeWithString _ (Just (JsonNumber t)) "number"          = ""
-matchTypeWithString _ (Just (JsonString t)) "string"          = ""
-matchTypeWithString _ (Just JsonNull) "null"                  = ""
-matchTypeWithString _ Nothing "none"                          = ""  -- 要素が無ければ良い
-matchTypeWithString types (Just (JsonArray t)) text@('[':xs)  = maybe "" (matchArrayTypeWithString types t) $ bracketContent text '[' ']'
+matchTypeWithString _ (Just t) "any"                          = mMatch  -- 要素があれば良い
+matchTypeWithString _ (Just (JsonBool t)) "bool"              = mMatch
+matchTypeWithString _ (Just (JsonNumber t)) "number"          = mMatch
+matchTypeWithString _ (Just (JsonString t)) "string"          = mMatch
+matchTypeWithString _ (Just JsonNull) "null"                  = mMatch
+matchTypeWithString _ Nothing "none"                          = mMatch  -- 要素が無ければ良い
+matchTypeWithString types (Just (JsonArray t)) text@('[':xs)  = maybe mMatch (matchArrayTypeWithString types t) $ bracketContent text '[' ']'
 matchTypeWithString types (Just t) c                          = matchTypeFromName t types c
 matchTypeWithString _ _ _                                     = "error"
 
@@ -74,4 +80,14 @@ matchTypeWithString _ _ _                                     = "error"
  - String     条件に合っていなければエラーメッセージ
  -}
 matchArrayTypeWithString :: [JsonPair] -> JsonArray -> String -> String
-matchArrayTypeWithString types t c = if all (\s -> s == "") $ map (\target -> matchTypeWithString types (Just target) c) t then "" else "error"
+matchArrayTypeWithString types t c = if all isMatchMessage $ map (\target -> matchTypeWithString types (Just target) c) t then mMatch else "error"
+
+{-
+ - 一致しているメッセージか判定する
+ -
+ - String メッセージ
+ - Bool   一致している場合はTrue
+ -}
+isMatchMessage :: String -> Bool
+isMatchMessage s = s == mMatch
+
