@@ -1,17 +1,18 @@
 {
   "version": 0,
-  "type": {
+  "entry": "Main",
+  "object": {
+    "Main": {
+      "version": "number",
+      "name": ["string", "[string]"],
+      "ids": "[number]",
+      "scale": ["none", "number", "Scale"],
+      "data": "any"
+    },
     "Scale": {
       "x": "number",
       "y": "number",
       "z": "number"
     }
-  },
-  "main": {
-    "version": "number",
-    "name": ["string", "[string]"],
-    "ids": "[number]",
-    "scale": ["none", "number", "Scale"],
-    "data": "any"
   }
 }

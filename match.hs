@@ -13,16 +13,14 @@ import Json
  - Bool       条件に合っていればTrue
  -}
 matchConstitution :: JsonValue -> JsonObject -> Bool
-matchConstitution t c = matchTypeFromName t (flattenTypes c) "main"
-
-{-
- - 構成条件の型をフラットなリストにする
- -
- - JsonObject 構成条件を持つJsonObject
- - [JsonPair] 構成条件のキーと値のペアリスト
- -}
-flattenTypes :: JsonObject -> [JsonPair]
-flattenTypes c  = (maybeToList $ find (\pair -> "main" == fst pair) c) ++ (maybe [] jsonObjectContents $ lookup "type" c)
+-- matchConstitution t c = matchTypeFromName t (flattenTypes c) "main"
+matchConstitution t c = let maybeEntryName = lookup "entry" c
+                            maybeObject = lookup "object" c
+                        in  case all isJust (maybeEntryName:maybeObject:[]) of
+                            False ->  False
+                            True  ->  let (JsonObject object) = fromJust maybeObject
+                                          (JsonString entoryName) = fromJust maybeEntryName
+                                      in  matchTypeFromName t object entoryName
 
 {-
  - 指定した名前の型に一致した構成になっているか判定する
