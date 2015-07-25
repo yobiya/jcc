@@ -168,7 +168,7 @@ skipJsonString ('\\':x:xs)  = '\\':x:skipJsonString xs
 skipJsonString (x:xs)       = x:skipJsonString xs
 
 {-
- - JsonValueの内容をJSONのテキストに変換する
+ - JsonValueをJSONのテキストに変換する
  -
  - JsonValue  変換元の値
  - String     JSONテキスト
@@ -177,10 +177,11 @@ valueToText :: JsonValue -> String
 valueToText (JsonObject o)  = "{ " ++ (foldl1 (\x y -> x ++ ", " ++ y) $ map pairToText o) ++ " }"
 valueToText (JsonNumber n)  = show n
 valueToText (JsonString s)  = show s
+valueToText (JsonArray a)   = "[ " ++ (foldl1 (\x y -> x ++ ", " ++ y) $ map valueToText a) ++ " ]"
 valueToText v               = show v
 
 {-
- - JsonPairの内容をJSONのテキストに変換する
+ - JsonPairをJSONのテキストに変換する
  -
  - JsonPair 変換元のペア
  - String   JSONテキスト

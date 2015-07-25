@@ -80,7 +80,9 @@ matchTypeWithString _ _ _                                     = "error"
  - String     条件に合っていなければエラーメッセージ
  -}
 matchArrayTypeWithString :: [JsonPair] -> JsonArray -> String -> String
-matchArrayTypeWithString types t c = if all isMatchMessage $ map (\target -> matchTypeWithString types (Just target) c) t then mMatch else "error"
+matchArrayTypeWithString types t c  = case partition isMatchMessage $ map (\target -> matchTypeWithString types (Just target) c) t of
+                                      (_, e:es) -> (valueToText $ (\x -> (JsonArray x)) t) ++ " -- " ++ e      -- 配列の中のどれかがマッチしなかった
+                                      _         -> mMatch -- 配列の中の全てがマッチした
 
 {-
  - 一致しているメッセージか判定する
