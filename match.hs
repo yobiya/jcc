@@ -42,9 +42,9 @@ matchTypeFromName (key, t) types typeName  = matchType types (Just t) $ (key, fr
  - String           条件に合っていなければエラーメッセージ
  -}
 matchType :: [JsonPair] -> Maybe JsonValue -> JsonPair -> String
-matchType types t (key, JsonArray c)                      = case partition isMatchMessage $ map (\v -> matchType types t (key, v)) c of
-                                                        ([], e:es)  -> e      -- 配列の中のどれともマッチしなかった
-                                                        _           -> mMatch -- 配列の中のどれかにマッチした
+matchType types t (key, JsonArray c)                    = case partition isMatchMessage $ map (\v -> matchType types t (key, v)) c of
+                                                          ([], e:es)  -> e      -- 配列の中のどれともマッチしなかった
+                                                          _           -> mMatch -- 配列の中のどれかにマッチした
 matchType types (Just (JsonObject t)) (_, JsonObject c) = case filter (not . isMatchMessage) $ map (\(key, value) -> matchType types (lookup key t) (key, value)) c of
                                                           []    -> mMatch
                                                           e:es  -> e

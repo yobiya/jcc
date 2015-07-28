@@ -178,6 +178,7 @@ valueToText (JsonObject o)  = "{ " ++ (foldl1 (\x y -> x ++ ", " ++ y) $ map pai
 valueToText (JsonNumber n)  = show n
 valueToText (JsonString s)  = show s
 valueToText (JsonArray a)   = "[ " ++ (foldl1 (\x y -> x ++ ", " ++ y) $ map valueToText a) ++ " ]"
+valueToText JsonNull        = "null"
 valueToText v               = show v
 
 {-
