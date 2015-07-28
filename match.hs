@@ -50,7 +50,7 @@ matchType types (Just (JsonObject t)) (_, JsonObject c) = case filter (not . isM
                                                           e:es  -> e
 matchType types t (key, (JsonString c))                 = matchTypeWithString types t $ (key, filter (/= ' ') c)
 matchType _ Nothing _                                   = "error"
-matchType _ (Just t) c                                  = "Not found " ++ valueToText t ++ " match pattern."
+matchType _ (Just t) c                                  = emNotFoundJsonPattern $ valueToText t
 
 {-
  - 値が文字列で表される構成に一致しているか判定する
@@ -69,7 +69,7 @@ matchTypeWithString _ (Just JsonNull) (_, "null")                   = mMatch
 matchTypeWithString _ Nothing (_, "none")                           = mMatch  -- 要素が無ければ良い
 matchTypeWithString types (Just (JsonArray t)) (key, text@('[':xs)) = maybe mMatch (matchArrayTypeWithString types (key, t)) $ bracketContent text '[' ']'
 matchTypeWithString types (Just t) (key, c)                         = matchTypeFromName (key, t) types c
-matchTypeWithString _ _ (key, _)                                    = "Not found " ++ key ++ " key."
+matchTypeWithString _ _ (key, _)                                    = emNotFoundKey key
 
 {-
  - 配列の値が構成に一致しているか判定する

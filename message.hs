@@ -9,4 +9,5 @@ emNonObjectKeyValuePair x = Left $ "Not found object content key value pair. (" 
 emNonValue                = Left $ "Not found value."
 emNonCloseBracket c       = Left $ "Not found close bracket. (" ++ c:")"
 emParseError n (Left e)   = "File \"" ++ n ++ "\" parse error : " ++ e
-
+emNotFoundKey key         = "Not found " ++ key ++ " key."
+emNotFoundJsonPattern v   = "Not found " ++ v ++ " match pattern."
