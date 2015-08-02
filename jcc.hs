@@ -29,6 +29,44 @@ match xs  = case find (\(n, e) -> isLeft e) xs of
                                 ""  -> tn ++ " is match."
                                 e   -> tn ++ " is not match : " ++ e
 
+{-
+ - コマンド引数の配列を解析する
+ -
+ - [String]                         コマンド引数
+ - Either String (String, [String]) エラーメッセージか構成情報ファイル名と対象ファイル名の配列のペア
+ -}
+parseArgs :: [String] -> Either String [(String, [String])]
+parseArgs xs  = case divideOptions xs of
+                []            ->  Left "Need options -c, -t"
+                ("", args):_  ->  Left ("Unkown option " ++ show args)
+                options       ->  case filter (/= mMatch) $ map isAvailableOption options of
+                                []    -> Right options
+                                y:ys  -> Left y
+
+{-
+ - コマンド引数をオプションとその引数に分解する
+ -
+ - [String]             コマンド引数
+ - [(String, [String])] オプション名とその引数のペアのリスト
+ -}
+divideOptions :: [String] -> [(String, [String])]
+divideOptions []  = []
+divideOptions xs  = let (options, other1) = break (not . isOption) xs
+                    in  let (args, other2) = break isOption other1
+                        in  let option = if options == [] then "" else head options
+                            in  (option, args):(divideOptions other2)
+
+-- オプションの文字列か判定する
+isOption :: String -> Bool
+isOption ('-':xs) = True
+isOption _        = False
+
+-- 有効なオプションか判定する
+isAvailableOption :: (String, [String]) -> String
+isAvailableOption ("-c", xs)  = if length xs == 1 then mMatch else "-c option receivable argument count is one."
+isAvailableOption ("-t", xs)  = if length xs >= 1 then mMatch else "-t option need one or more argument count."
+isAvailableOption (x, _)      = x ++ " is unkown option."
+
 -- ファイル読み込みエラー処理
 readErrorHander :: String -> IOError -> IO String
 readErrorHander fileName error = do
