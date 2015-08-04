@@ -25,7 +25,7 @@ data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObje
  - JSONテキストをパースする
  -
  - String     JSONテキスト
- - JsonObject パースされたJSONのオブジェクト
+ - JsonObject エラーメッセージかパースされたJSONのオブジェクト
  -}
 parseJson :: String -> Either String JsonObject
 parseJson text = parseObject $ removeWhiteSpace text

@@ -4,16 +4,37 @@ import System.Environment
 import Control.Exception
 import Data.Either
 import Data.List
+import Data.Maybe
 import Json
 import Match
 import Message
 
 main = do
-  c:constitutionFileName:t:targetFileName:_ <- getArgs
-  constitution <- catch (readFile constitutionFileName) (readErrorHander constitutionFileName)
-  target <- catch (readFile targetFileName) (readErrorHander targetFileName)
+  args <- getArgs
+  let fileNames = getFileNames args
+  if isLeft fileNames
+    then
+      putStrLn $ head $ lefts (fileNames:[])
+    else do
+      let (constitutionFileName, targetFileNames) = head $ rights (fileNames:[])
 
-  putStrLn $ match $ zip (constitutionFileName:targetFileName:[]) $ map parseJson (constitution:target:[])
+      constitution <- catch (readFile constitutionFileName) (readErrorHander constitutionFileName)
+      targets <- mapM (\fileName -> catch (readFile fileName) (readErrorHander fileName)) targetFileNames
+
+      putStrLn $ match $ zip (constitutionFileName:targetFileNames) $ map parseJson (constitution:targets)
+
+{-
+ - コマンド引数からファイル名を取得する
+ -
+ - [String]                         コマンド引数
+ - Either String (String, [String]) エラーメッセージか解析情報ファイル名と解析対象のファイル名のペア
+ -}
+getFileNames :: [String] -> Either String (String, [String])
+getFileNames xs = case parseArgs xs of
+                  Left m    ->  Left m
+                  Right ys  ->  let (_, constitutionFileName:_) = fromJust $ find (\(x, _) -> x == "-c") ys -- parseArgsで必要な要素は揃っていることはチェック済み
+                                    (_, targetFileNames)        = fromJust $ find (\(x, _) -> x == "-t") ys
+                                in  Right (constitutionFileName, targetFileNames)
 
 {-
  - 構成が正しいか判定する
@@ -38,10 +59,11 @@ match xs  = case find (\(n, e) -> isLeft e) xs of
 parseArgs :: [String] -> Either String [(String, [String])]
 parseArgs xs  = case divideOptions xs of
                 []            ->  Left "Need options -c, -t"
-                ("", args):_  ->  Left ("Unkown option " ++ show args)
                 options       ->  case filter (/= mMatch) $ map isAvailableOption options of
-                                []    -> Right options
-                                y:ys  -> Left y
+                                  []    -> let c = any (\(x, _) -> x == "-c") options
+                                               t = any (\(x, _) -> x == "-t") options
+                                           in  if c && t then Right options else Left "Need options -c, -t"
+                                  y:ys  -> Left y
 
 {-
  - コマンド引数をオプションとその引数に分解する
@@ -65,7 +87,7 @@ isOption _        = False
 isAvailableOption :: (String, [String]) -> String
 isAvailableOption ("-c", xs)  = if length xs == 1 then mMatch else "-c option receivable argument count is one."
 isAvailableOption ("-t", xs)  = if length xs >= 1 then mMatch else "-t option need one or more argument count."
-isAvailableOption (x, _)      = x ++ " is unkown option."
+isAvailableOption _           = "Has unkown option."
 
 -- ファイル読み込みエラー処理
 readErrorHander :: String -> IOError -> IO String
