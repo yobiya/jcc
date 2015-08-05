@@ -10,6 +10,9 @@ import Json
 import Match
 import Message
 
+{-
+ - エントリーポイント
+ -}
 main :: IO ()
 main = do
   args <- getArgs
@@ -30,11 +33,11 @@ main = do
  - Either String (String, [String]) エラーメッセージか解析情報ファイル名と解析対象のファイル名のペア
  -}
 getFileNames :: [String] -> Either String (String, [String])
-getFileNames xs = case parseArgs xs of
-                  Left m    ->  Left m
-                  Right ys  ->  let (_, constitutionFileName:_) = fromJust $ find (\(x, _) -> x == "-c") ys -- parseArgsで必要な要素は揃っていることはチェック済み
-                                    (_, targetFileNames)        = fromJust $ find (\(x, _) -> x == "-t") ys
-                                in  Right (constitutionFileName, targetFileNames)
+getFileNames xs = (\ys -> do
+                    let (_, constitutionFileName:_) = fromJust $ find (\(x, _) -> x == "-c") ys -- parseArgsで必要な要素は揃っていることはチェック済み
+                        (_, targetFileNames)        = fromJust $ find (\(x, _) -> x == "-t") ys
+                    (constitutionFileName, targetFileNames)
+                  ) <$> parseArgs xs
 
 {-
  - 構成が正しいか判定する
