@@ -1,6 +1,7 @@
 -- JSON Constitution Checker
 
 import System.Environment
+import Control.Applicative
 import Control.Exception
 import Data.Either
 import Data.List
@@ -9,19 +10,18 @@ import Json
 import Match
 import Message
 
+main :: IO ()
 main = do
   args <- getArgs
   let fileNames = getFileNames args
-  if isLeft fileNames
-    then
-      putStrLn $ head $ lefts (fileNames:[])
-    else do
-      let (constitutionFileName, targetFileNames) = head $ rights (fileNames:[])
+  putStrLn =<< either
+                pure
+                (\(constitutionFileName, targetFileNames) -> do
+                  constitution <- catch (readFile constitutionFileName) (readErrorHander constitutionFileName)
+                  targets <- mapM (\fileName -> catch (readFile fileName) (readErrorHander fileName)) targetFileNames
 
-      constitution <- catch (readFile constitutionFileName) (readErrorHander constitutionFileName)
-      targets <- mapM (\fileName -> catch (readFile fileName) (readErrorHander fileName)) targetFileNames
-
-      putStrLn $ match $ zip (constitutionFileName:targetFileNames) $ map parseJson (constitution:targets)
+                  return $ match $ zip (constitutionFileName:targetFileNames) $ map parseJson (constitution:targets))
+                fileNames
 
 {-
  - コマンド引数からファイル名を取得する
