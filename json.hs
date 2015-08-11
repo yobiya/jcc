@@ -24,10 +24,10 @@ data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObje
 {-
  - JSONテキストをパースする
  -
- - String     JSONテキスト
- - JsonObject エラーメッセージかパースされたJSONのオブジェクト
+ - String             JSONテキスト
+ - Fragile JsonObject エラーメッセージかパースされたJSONのオブジェクト
  -}
-parseJson :: String -> Either String JsonObject
+parseJson :: String -> Fragile JsonObject
 parseJson text = parseObject $ removeWhiteSpace text
 
 {-
@@ -83,13 +83,13 @@ sameBracketContentInBracket (x:xs) c      | x == c    = Just ""
 sameBracketContentInBracket _ _                       = Nothing
 
 -- キーと値のペアをパースする
-parsePair :: String -> Either String JsonPair
+parsePair :: String -> Fragile JsonPair
 parsePair text  = case break (== ':') text of
                   (keyText, ':':valueText)  ->  maybe (emNonBracketPair '"' '"') (\b -> fmap (\x -> (b, x)) $ parseValue valueText) $ bracketContent keyText '"' '"'
                   (text, _)                 ->  emNonObjectKeyValuePair text
 
 -- 値をパースする
-parseValue :: String -> Either String JsonValue
+parseValue :: String -> Fragile JsonValue
 parseValue text@('{':xs)  = fmap (\x -> (JsonObject x)) $ parseObject text
 parseValue text@('[':xs)  = fmap (\x -> (JsonArray x)) $ parseArray text
 parseValue text@('"':xs)  = maybe (emNonBracketPair '"' '"') (\x -> Right $ JsonString x) $ bracketContent text '"' '"'
@@ -100,11 +100,11 @@ parseValue ""             = emNonValue
 parseValue text           = Right $ JsonNumber $ read text
 
 -- JSONのオブジェクトをパースする
-parseObject :: String -> Either String JsonObject
+parseObject :: String -> Fragile JsonObject
 parseObject xs  = maybe (emNonBracketPair '{' '}') parseObjectContents (bracketContent xs '{' '}')
 
 -- JSONのオブジェクトの要素をパースする
-parseObjectContents :: String -> Either String JsonObject
+parseObjectContents :: String -> Fragile JsonObject
 parseObjectContents xs  = case divideTopLevel xs ',' of
                           Left x  ->  Left x
                           Right x ->  case partitionEithers $ map parsePair x of
@@ -112,7 +112,7 @@ parseObjectContents xs  = case divideTopLevel xs ',' of
                                       (x:_, _)  -> Left x
 
 -- JSONの配列をパースする
-parseArray :: String -> Either String [JsonValue]
+parseArray :: String -> Fragile [JsonValue]
 parseArray xs = case bracketContent xs '[' ']' of
                 Nothing ->  emNonBracketPair '[' ']'
                 Just x  ->  case divideTopLevel x ',' of
@@ -122,10 +122,10 @@ parseArray xs = case bracketContent xs '[' ']' of
                                         (x:_, _)  -> Left x
 
 -- トップレベルにある文字で文字列を分割する
-divideTopLevel :: String -> Char -> Either String [String]
+divideTopLevel :: String -> Char -> Fragile [String]
 divideTopLevel xs c = divideTopLevelWork xs c []
 
-divideTopLevelWork :: String -> Char -> [Char] -> Either String [String]
+divideTopLevelWork :: String -> Char -> [Char] -> Fragile [String]
 divideTopLevelWork "" _ (s:stack)                 = emNonCloseBracket s                                         -- スタック終端文字が残っている場合はエラー
 divideTopLevelWork "" _ _                         = Right [""]
 divideTopLevelWork ('{':xs) c stack               = addRightFirstHead '{' $ divideTopLevelWork xs c ('}':stack) -- オブジェクトの開始文字が見つかったので、スタックに終了文字を追加

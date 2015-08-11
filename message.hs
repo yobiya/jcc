@@ -1,5 +1,10 @@
 module Message where 
 
+import Data.Either
+
+-- 型
+type Fragile = Either String  -- 要素かエラーメッセージを持つ
+
 -- 成功メッセージ
 mMatch  = ""
 

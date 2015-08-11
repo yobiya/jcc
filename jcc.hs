@@ -29,10 +29,10 @@ main = do
 {-
  - コマンド引数からファイル名を取得する
  -
- - [String]                         コマンド引数
- - Either String (String, [String]) エラーメッセージか解析情報ファイル名と解析対象のファイル名のペア
+ - [String]                   コマンド引数
+ - Fragile (String, [String]) エラーメッセージか解析情報ファイル名と解析対象のファイル名のペア
  -}
-getFileNames :: [String] -> Either String (String, [String])
+getFileNames :: [String] -> Fragile (String, [String])
 getFileNames xs = (\ys -> do
                     let (_, constitutionFileName:_) = fromJust $ find (\(x, _) -> x == "-c") ys -- parseArgsで必要な要素は揃っていることはチェック済み
                         (_, targetFileNames)        = fromJust $ find (\(x, _) -> x == "-t") ys
@@ -42,9 +42,9 @@ getFileNames xs = (\ys -> do
 {-
  - 構成が正しいか判定する
  -
- - [(String, Either String JsonObject)] ファイル名とJSONのパース結果のタプルリスト
+ - [(String, Fragile JsonObject)] ファイル名とJSONのパース結果のタプルリスト
  -}
-match :: [(String, Either String JsonObject)] -> String
+match :: [(String, Fragile JsonObject)] -> String
 match xs  = case find (\(n, e) -> isLeft e) xs of
             Just (n, e) ->  emParseError n e
             Nothing     ->  let (_, Right c) = xs!!0
@@ -56,10 +56,10 @@ match xs  = case find (\(n, e) -> isLeft e) xs of
 {-
  - コマンド引数の配列を解析する
  -
- - [String]                         コマンド引数
- - Either String (String, [String]) エラーメッセージか構成情報ファイル名と対象ファイル名の配列のペア
+ - [String]                   コマンド引数
+ - Fragile (String, [String]) エラーメッセージか構成情報ファイル名と対象ファイル名の配列のペア
  -}
-parseArgs :: [String] -> Either String [(String, [String])]
+parseArgs :: [String] -> Fragile [(String, [String])]
 parseArgs xs  = case divideOptions xs of
                 []            ->  Left "Need options -c, -t"
                 options       ->  case filter (/= mMatch) $ map isAvailableOption options of
