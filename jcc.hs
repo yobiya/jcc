@@ -17,14 +17,20 @@ main :: IO ()
 main = do
   args <- getArgs
   let fileNames = getFileNames args
-  putStrLn =<< either
-                pure
-                (\(constitutionFileName, targetFileNames) -> do
-                  constitution <- catch (readFile constitutionFileName) (readErrorHander constitutionFileName)
-                  targets <- mapM (\fileName -> catch (readFile fileName) (readErrorHander fileName)) targetFileNames
+  putStrLn =<< (either pure matchFiles fileNames) `catch` ((\x -> return "") :: SomeException -> IO String)
 
-                  return $ match $ zip (constitutionFileName:targetFileNames) $ map parseJson (constitution:targets))
-                fileNames
+{-
+ - ファイルを読み込み、構成が正しいか判断する
+ -
+ - (String, [String]) 構成情報ファイル名と対象ファイル名リストのペア
+ - IO String          判断結果のメッセージ
+ -}
+matchFiles :: (String, [String]) -> IO String
+matchFiles (cFileName, tFileNames) = do
+                                      constitution <- onException (readFile cFileName) (readErrorHander cFileName)
+                                      targets <- mapM (\fileName -> onException (readFile fileName) (readErrorHander fileName)) tFileNames
+
+                                      return $ match $ zip (cFileName:tFileNames) $ map parseJson (constitution:targets)
 
 {-
  - コマンド引数からファイル名を取得する
@@ -93,8 +99,6 @@ isAvailableOption ("-t", xs)  = if length xs >= 1 then mMatch else "-t option ne
 isAvailableOption _           = "Has unkown option."
 
 -- ファイル読み込みエラー処理
-readErrorHander :: String -> IOError -> IO String
-readErrorHander fileName error = do
-  putStrLn $ "Can not open File \"" ++ fileName ++ "\""
-  return ""
+readErrorHander :: String -> IO ()
+readErrorHander fileName = putStrLn $ "Can not open File \"" ++ fileName ++ "\""
 
