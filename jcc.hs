@@ -1,8 +1,8 @@
 -- JSON Constitution Checker
-
 import System.Environment
 import Control.Applicative
 import Control.Exception
+import Control.Monad
 import Data.Either
 import Data.List
 import Data.Maybe
@@ -26,11 +26,17 @@ main = do
  - IO String          判断結果のメッセージ
  -}
 matchFiles :: (String, [String]) -> IO String
-matchFiles (cFileName, tFileNames) = do
-                                      constitution <- onException (readFile cFileName) (readErrorHander cFileName)
-                                      targets <- mapM (\fileName -> onException (readFile fileName) (readErrorHander fileName)) tFileNames
+matchFiles (cPath, tPaths)  = either
+                                (\x -> return $ emParseError cPath x)
+                                (\constitution -> do
+                                  targets <- mapM (\fileName -> onException (readFile fileName) (readErrorHander fileName)) tPaths
+                                  return $ foldl1 (\x y -> x ++ "\n" ++ y) $ map eitherValue $ map (\(tFileName, tFile) -> match tFileName constitution <$> parseJson tFile) $ zip tPaths targets
+                                ) =<< parseJson <$> onException (readFile cPath) (readErrorHander cPath)
 
-                                      return $ match $ zip (cFileName:tFileNames) $ map parseJson (constitution:targets)
+-- Either の要素を取り出す
+eitherValue :: Either a a -> a
+eitherValue (Left x)  = x
+eitherValue (Right x) = x
 
 {-
  - コマンド引数からファイル名を取得する
@@ -50,14 +56,10 @@ getFileNames xs = (\ys -> do
  -
  - [(String, Fragile JsonObject)] ファイル名とJSONのパース結果のタプルリスト
  -}
-match :: [(String, Fragile JsonObject)] -> String
-match xs  = case find (\(n, e) -> isLeft e) xs of
-            Just (n, e) ->  emParseError n e
-            Nothing     ->  let (_, Right c) = xs!!0
-                                (tn, Right t) = xs!!1
-                            in  case matchConstitution ((\x -> (JsonObject x)) t) c of
-                                ""  -> tn ++ " is match."
-                                e   -> tn ++ " is not match : " ++ e
+match :: String -> JsonObject -> JsonObject -> String
+match n c t = case matchConstitution ((\x -> (JsonObject x)) t) c of
+              ""  -> n ++ " is match."
+              e   -> n ++ " is not match : " ++ e
 
 {-
  - コマンド引数の配列を解析する
