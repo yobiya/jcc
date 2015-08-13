@@ -1,4 +1,5 @@
 -- JSON Constitution Checker
+
 import System.Environment
 import Control.Applicative
 import Control.Exception
@@ -30,13 +31,8 @@ matchFiles (cPath, tPaths)  = either
                                 (\x -> return $ emParseError cPath x)
                                 (\constitution -> do
                                   targets <- mapM (\fileName -> onException (readFile fileName) (readErrorHander fileName)) tPaths
-                                  return $ foldl1 (\x y -> x ++ "\n" ++ y) $ map eitherValue $ map (\(tFileName, tFile) -> match tFileName constitution <$> parseJson tFile) $ zip tPaths targets
+                                  return $ unlines $ map (either id id) $ map (\(tFileName, tFile) -> match tFileName constitution <$> parseJson tFile) $ zip tPaths targets
                                 ) =<< parseJson <$> onException (readFile cPath) (readErrorHander cPath)
-
--- Either の要素を取り出す
-eitherValue :: Either a a -> a
-eitherValue (Left x)  = x
-eitherValue (Right x) = x
 
 {-
  - コマンド引数からファイル名を取得する
