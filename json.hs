@@ -4,12 +4,15 @@ module Json (
   JsonString,
   JsonObject,
   JsonArray,
-  parseJson,
+  parseJsonFile,
   jsonObjectContents,
   bracketContent,
   valueToText
 ) where 
 
+import System.IO
+import Control.Applicative
+import Control.Exception
 import Data.Either
 import Message
 
@@ -20,6 +23,18 @@ type JsonString = String
 type JsonObject = [JsonPair]
 type JsonArray = [JsonValue]
 data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObject JsonObject | JsonArray [JsonValue] | JsonNull deriving (Show)
+
+{-
+ - ファイルから読み込んだJSONテキストをパースする
+ -
+ - FilePath                 ファイルのパス
+ - IO (Fragile JsonObject)  エラーメッセージかパースされたJSONのオブジェクトのIO
+ -}
+parseJsonFile :: FilePath -> IO (Fragile JsonObject)
+parseJsonFile path  = either
+                        (\m -> Left $ emParseError path m)
+                        (\x -> Right x)
+                        <$> parseJson <$> onException (readFile path) (putStrLn $ emCanNotOpenFile path)
 
 {-
  - JSONテキストをパースする

@@ -28,11 +28,9 @@ main = do
  -}
 matchFiles :: (String, [String]) -> IO String
 matchFiles (cPath, tPaths)  = either
-                                (\x -> return $ emParseError cPath x)
-                                (\constitution -> do
-                                  targets <- mapM (\fileName -> onException (readFile fileName) (readErrorHander fileName)) tPaths
-                                  return $ unlines $ map (either id id) $ map (\(tFileName, tFile) -> match tFileName constitution <$> parseJson tFile) $ zip tPaths targets
-                                ) =<< parseJson <$> onException (readFile cPath) (readErrorHander cPath)
+                                pure
+                                (\c -> unlines <$> mapM (\path -> either id (match path c) <$> parseJsonFile path) tPaths)
+                                =<< parseJsonFile cPath
 
 {-
  - コマンド引数からファイル名を取得する
@@ -95,8 +93,4 @@ isAvailableOption :: (String, [String]) -> String
 isAvailableOption ("-c", xs)  = if length xs == 1 then mMatch else "-c option receivable argument count is one."
 isAvailableOption ("-t", xs)  = if length xs >= 1 then mMatch else "-t option need one or more argument count."
 isAvailableOption _           = "Has unkown option."
-
--- ファイル読み込みエラー処理
-readErrorHander :: String -> IO ()
-readErrorHander fileName = putStrLn $ "Can not open File \"" ++ fileName ++ "\""
 
