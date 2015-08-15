@@ -67,7 +67,7 @@ matchTypeWithString _ (Just (JsonNumber t)) (_, "number")           = mMatch
 matchTypeWithString _ (Just (JsonString t)) (_, "string")           = mMatch
 matchTypeWithString _ (Just JsonNull) (_, "null")                   = mMatch
 matchTypeWithString _ Nothing (_, "none")                           = mMatch  -- 要素が無ければ良い
-matchTypeWithString types (Just (JsonArray t)) (key, text@('[':xs)) = maybe mMatch (matchArrayTypeWithString types (key, t)) $ bracketContent text '[' ']'
+matchTypeWithString types (Just (JsonArray t)) (key, text@('[':xs)) = either (\_ -> mMatch) (matchArrayTypeWithString types (key, t)) $ bracketContent text '[' ']'
 matchTypeWithString types (Just t) (key, c)                         = matchTypeFromName (key, t) types c
 matchTypeWithString _ _ (key, _)                                    = emNotFoundKey key
 

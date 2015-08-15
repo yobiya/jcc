@@ -58,14 +58,14 @@ jsonObjectContents _              = []
 {-
  - 囲まれている要素を取り出す
  -
- - String       要素を取り出される文字列
- - Char         囲む開始文字
- - Char         囲む終了文字
- - Maybe String 取り出された文字列
+ - String         要素を取り出される文字列
+ - Char           囲む開始文字
+ - Char           囲む終了文字
+ - Fragile String エラーメッセージか取り出された文字列
  -}
-bracketContent :: String -> Char -> Char -> Maybe String
-bracketContent text sb eb | sb == eb  = sameBracketContent text sb
-                          | otherwise = bracketContentLevel text sb eb []
+bracketContent :: String -> Char -> Char -> Fragile String
+bracketContent text sb eb | sb == eb  = maybe (emlNonBracketPair sb eb) (\x -> Right x) $ sameBracketContent text sb
+                          | otherwise = maybe (emlNonBracketPair sb eb) (\x -> Right x) $ bracketContentLevel text sb eb []
 
 {-
  - 囲まれている階層構造の要素を取り出す
@@ -100,14 +100,14 @@ sameBracketContentInBracket _ _                       = Nothing
 -- キーと値のペアをパースする
 parsePair :: String -> Fragile JsonPair
 parsePair text  = case break (== ':') text of
-                  (keyText, ':':valueText)  ->  maybe (emlNonBracketPair '"' '"') (\b -> (\x -> (b, x)) <$> parseValue valueText) $ bracketContent keyText '"' '"'
+                  (keyText, ':':valueText)  ->  (\b -> (\x -> (b, x)) <$> parseValue valueText) =<< bracketContent keyText '"' '"'
                   (text, _)                 ->  emlNonObjectKeyValuePair text
 
 -- 値をパースする
 parseValue :: String -> Fragile JsonValue
-parseValue text@('{':xs)  = (\x -> (JsonObject x)) <$> parseObject text
-parseValue text@('[':xs)  = (\x -> (JsonArray x)) <$> parseArray text
-parseValue text@('"':xs)  = maybe (emlNonBracketPair '"' '"') (\x -> Right $ JsonString x) $ bracketContent text '"' '"'
+parseValue text@('{':xs)  = (\x -> JsonObject x) <$> parseObject text
+parseValue text@('[':xs)  = (\x -> JsonArray x) <$> parseArray text
+parseValue text@('"':xs)  = (\x -> JsonString x) <$> bracketContent text '"' '"'
 parseValue "True"         = Right $ JsonBool True
 parseValue "False"        = Right $ JsonBool False
 parseValue "null"         = Right JsonNull
@@ -116,7 +116,7 @@ parseValue text           = Right $ JsonNumber $ read text
 
 -- JSONのオブジェクトをパースする
 parseObject :: String -> Fragile JsonObject
-parseObject xs  = maybe (emlNonBracketPair '{' '}') parseObjectContents (bracketContent xs '{' '}')
+parseObject xs  = parseObjectContents =<< (bracketContent xs '{' '}')
 
 {-
  - ',' で区切られた文字列をパースする
@@ -137,7 +137,7 @@ parseObjectContents xs  = parseCollection parsePair xs
 
 -- JSONの配列をパースする
 parseArray :: String -> Fragile [JsonValue]
-parseArray xs = maybe (emlNonBracketPair '[' ']') (parseCollection parseValue) $ bracketContent xs '[' ']'
+parseArray xs = (parseCollection parseValue) =<< bracketContent xs '[' ']'
 
 -- トップレベルにある文字で文字列を分割する
 divideTopLevel :: String -> Char -> Fragile [String]
@@ -161,7 +161,7 @@ divideTopLevelWork (x:xs) c (s:stack) | x == s    = addRightFirstHead x $ divide
  - Either b [[a]] 追加された結果
  -}
 addRightFirstHead :: a -> Either b [[a]] -> Either b [[a]]
-addRightFirstHead a e = fmap (\(x:xs) -> (a:x):xs) e
+addRightFirstHead a e = (\(x:xs) -> (a:x):xs) <$> e
 
 {-
  - JSONテキストから不要なスペースを削除する
