@@ -137,7 +137,9 @@ parseObjectContents xs  = parseCollection parsePair xs
 
 -- JSONの配列をパースする
 parseArray :: String -> Fragile [JsonValue]
-parseArray xs = (parseCollection parseValue) =<< bracketContent xs '[' ']'
+parseArray xs = case bracketContent xs '[' ']' of
+                Right ""  -> Right []                         -- 配列の内容が空の場合は、空配列とする
+                x         -> parseCollection parseValue =<< x
 
 -- トップレベルにある文字で文字列を分割する
 divideTopLevel :: String -> Char -> Fragile [String]

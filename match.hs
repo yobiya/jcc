@@ -81,8 +81,8 @@ matchTypeWithString _ _ (key, _)                                    = emNotFound
  -}
 matchArrayTypeWithString :: [JsonPair] -> (String, JsonArray) -> String -> String
 matchArrayTypeWithString types (key, t) c = case partition isMatchMessage $ map (\target -> matchTypeWithString types (Just target) (key, c)) t of
-                                            (_, e:es) -> (valueToText $ (\x -> (JsonArray x)) t) ++ " -- " ++ e      -- 配列の中のどれかがマッチしなかった
-                                            _         -> mMatch -- 配列の中の全てがマッチした
+                                            (_, e:es) -> (valueToText $ JsonArray t) ++ " -- " ++ e   -- 配列の中のどれかがマッチしなかった
+                                            _         -> mMatch                                       -- 配列の中の全てがマッチした
 
 {-
  - 一致しているメッセージか判定する
