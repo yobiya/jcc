@@ -79,12 +79,12 @@ bracketContentLevel :: String -> Char -> Char -> [Char] -> Maybe String
 bracketContentLevel "" _ _ _                            = Nothing
 bracketContentLevel (x:xs) sb eb []         | x == sb   = bracketContentLevel xs sb eb (eb:[])
                                             | otherwise = bracketContentLevel xs sb eb []
-bracketContentLevel (x:xs) sb eb (s:[])     | x == sb   = fmap (\y -> x:y) $ bracketContentLevel xs sb eb (eb:s:[])
+bracketContentLevel (x:xs) sb eb (s:[])     | x == sb   = (x:) <$> bracketContentLevel xs sb eb (eb:s:[])
                                             | x == s    = Just ""
-                                            | otherwise = fmap (\y -> x:y) $ bracketContentLevel xs sb eb (s:[])
-bracketContentLevel (x:xs) sb eb (s:stack)  | x == sb   = fmap (\y -> x:y) $ bracketContentLevel xs sb eb (eb:s:stack)
-                                            | x == s    = fmap (\y -> x:y) $ bracketContentLevel xs sb eb stack
-                                            | otherwise = fmap (\y -> x:y) $ bracketContentLevel xs sb eb (s:stack)
+                                            | otherwise = (x:) <$> bracketContentLevel xs sb eb (s:[])
+bracketContentLevel (x:xs) sb eb (s:stack)  | x == sb   = (x:) <$> bracketContentLevel xs sb eb (eb:s:stack)
+                                            | x == s    = (x:) <$> bracketContentLevel xs sb eb stack
+                                            | otherwise = (x:) <$> bracketContentLevel xs sb eb (s:stack)
 
 -- 同じ文字で囲まれている要素を取り出す
 sameBracketContent :: String -> Char -> Maybe String
@@ -94,19 +94,19 @@ sameBracketContent (x:xs) c | x == c    = sameBracketContentInBracket xs c
 sameBracketContentInBracket :: String -> Char -> Maybe String
 sameBracketContentInBracket ('\\':x:xs) c             = fmap (\y -> '\\':x:y) $ sameBracketContentInBracket xs c
 sameBracketContentInBracket (x:xs) c      | x == c    = Just ""
-                                          | otherwise = fmap (\y -> x:y) $ sameBracketContentInBracket xs c
+                                          | otherwise = (x:) <$> sameBracketContentInBracket xs c
 sameBracketContentInBracket _ _                       = Nothing
 
 -- キーと値のペアをパースする
 parsePair :: String -> Fragile JsonPair
 parsePair text  = case break (== ':') text of
-                  (keyText, ':':valueText)  ->  maybe (emlNonBracketPair '"' '"') (\b -> fmap (\x -> (b, x)) $ parseValue valueText) $ bracketContent keyText '"' '"'
+                  (keyText, ':':valueText)  ->  maybe (emlNonBracketPair '"' '"') (\b -> (\x -> (b, x)) <$> parseValue valueText) $ bracketContent keyText '"' '"'
                   (text, _)                 ->  emlNonObjectKeyValuePair text
 
 -- 値をパースする
 parseValue :: String -> Fragile JsonValue
-parseValue text@('{':xs)  = fmap (\x -> (JsonObject x)) $ parseObject text
-parseValue text@('[':xs)  = fmap (\x -> (JsonArray x)) $ parseArray text
+parseValue text@('{':xs)  = (\x -> (JsonObject x)) <$> parseObject text
+parseValue text@('[':xs)  = (\x -> (JsonArray x)) <$> parseArray text
 parseValue text@('"':xs)  = maybe (emlNonBracketPair '"' '"') (\x -> Right $ JsonString x) $ bracketContent text '"' '"'
 parseValue "True"         = Right $ JsonBool True
 parseValue "False"        = Right $ JsonBool False
