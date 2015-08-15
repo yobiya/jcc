@@ -33,7 +33,7 @@ data JsonValue = JsonBool Bool | JsonNumber Float | JsonString String | JsonObje
 parseJsonFile :: FilePath -> IO (Fragile JsonObject)
 parseJsonFile path  = either
                         (\m -> Left $ emParseError path m)
-                        (\x -> Right x)
+                        Right
                         <$> parseJson <$> onException (readFile path) (putStrLn $ emCanNotOpenFile path)
 
 {-
@@ -64,8 +64,8 @@ jsonObjectContents _              = []
  - Fragile String エラーメッセージか取り出された文字列
  -}
 bracketContent :: String -> Char -> Char -> Fragile String
-bracketContent text sb eb | sb == eb  = maybe (emlNonBracketPair sb eb) (\x -> Right x) $ sameBracketContent text sb
-                          | otherwise = maybe (emlNonBracketPair sb eb) (\x -> Right x) $ bracketContentLevel text sb eb []
+bracketContent text sb eb | sb == eb  = maybe (emlNonBracketPair sb eb) Right $ sameBracketContent text sb
+                          | otherwise = maybe (emlNonBracketPair sb eb) Right $ bracketContentLevel text sb eb []
 
 {-
  - 囲まれている階層構造の要素を取り出す
@@ -105,9 +105,9 @@ parsePair text  = case break (== ':') text of
 
 -- 値をパースする
 parseValue :: String -> Fragile JsonValue
-parseValue text@('{':xs)  = (\x -> JsonObject x) <$> parseObject text
-parseValue text@('[':xs)  = (\x -> JsonArray x) <$> parseArray text
-parseValue text@('"':xs)  = (\x -> JsonString x) <$> bracketContent text '"' '"'
+parseValue text@('{':xs)  = JsonObject <$> parseObject text
+parseValue text@('[':xs)  = JsonArray <$> parseArray text
+parseValue text@('"':xs)  = JsonString <$> bracketContent text '"' '"'
 parseValue "True"         = Right $ JsonBool True
 parseValue "False"        = Right $ JsonBool False
 parseValue "null"         = Right JsonNull
@@ -144,24 +144,24 @@ divideTopLevel :: String -> Char -> Fragile [String]
 divideTopLevel xs c = divideTopLevelWork xs c []
 
 divideTopLevelWork :: String -> Char -> [Char] -> Fragile [String]
-divideTopLevelWork "" _ (s:stack)                 = emlNonCloseBracket s                                        -- スタック終端文字が残っている場合はエラー
+divideTopLevelWork "" _ (s:stack)                 = emlNonCloseBracket s                                      -- スタック終端文字が残っている場合はエラー
 divideTopLevelWork "" _ _                         = Right [""]
-divideTopLevelWork ('{':xs) c stack               = addRightFirstHead '{' $ divideTopLevelWork xs c ('}':stack) -- オブジェクトの開始文字が見つかったので、スタックに終了文字を追加
-divideTopLevelWork ('[':xs) c stack               = addRightFirstHead '[' $ divideTopLevelWork xs c (']':stack) -- 配列の開始文字が見つかったので、スタックに終了文字を追加
-divideTopLevelWork (x:xs) c []        | x == c    = ("":) <$> divideTopLevelWork xs c []                        -- 目的の文字が見つかった
-                                      | otherwise = addRightFirstHead x $ divideTopLevelWork xs c []
-divideTopLevelWork (x:xs) c (s:stack) | x == s    = addRightFirstHead x $ divideTopLevelWork xs c stack         -- スタックにある文字が見つかったので、スタックから削除
-                                      | otherwise = addRightFirstHead x $ divideTopLevelWork xs c (s:stack)
+divideTopLevelWork ('{':xs) c stack               = addFirstHead '{' <$> divideTopLevelWork xs c ('}':stack)  -- オブジェクトの開始文字が見つかったので、スタックに終了文字を追加
+divideTopLevelWork ('[':xs) c stack               = addFirstHead '[' <$> divideTopLevelWork xs c (']':stack)  -- 配列の開始文字が見つかったので、スタックに終了文字を追加
+divideTopLevelWork (x:xs) c []        | x == c    = ("":) <$> divideTopLevelWork xs c []                      -- 目的の文字が見つかった
+                                      | otherwise = addFirstHead x <$> divideTopLevelWork xs c []
+divideTopLevelWork (x:xs) c (s:stack) | x == s    = addFirstHead x <$> divideTopLevelWork xs c stack          -- スタックにある文字が見つかったので、スタックから削除
+                                      | otherwise = addFirstHead x <$> divideTopLevelWork xs c (s:stack)
 
 {-
- - Right の二重リストの先頭に要素を追加する
+ - 二重リストの先頭に要素を追加する
  -
- - a              追加する要素
- - Either b [[a]] 対象のEither
- - Either b [[a]] 追加された結果
+ - a      追加する要素
+ - [[a]]  対象のEither
+ - [[a]]  追加された結果
  -}
-addRightFirstHead :: a -> Either b [[a]] -> Either b [[a]]
-addRightFirstHead a e = (\(x:xs) -> (a:x):xs) <$> e
+addFirstHead :: a -> [[a]] -> [[a]]
+addFirstHead a (x:xs) = (a:x):xs
 
 {-
  - JSONテキストから不要なスペースを削除する
