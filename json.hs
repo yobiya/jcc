@@ -92,7 +92,7 @@ sameBracketContent (x:xs) c | x == c    = sameBracketContentInBracket xs c
                             | otherwise = sameBracketContent xs c
 
 sameBracketContentInBracket :: String -> Char -> Maybe String
-sameBracketContentInBracket ('\\':x:xs) c             = fmap (\y -> '\\':x:y) $ sameBracketContentInBracket xs c
+sameBracketContentInBracket ('\\':x:xs) c             = (\y -> '\\':x:y) <$> sameBracketContentInBracket xs c
 sameBracketContentInBracket (x:xs) c      | x == c    = Just ""
                                           | otherwise = (x:) <$> sameBracketContentInBracket xs c
 sameBracketContentInBracket _ _                       = Nothing
@@ -118,23 +118,26 @@ parseValue text           = Right $ JsonNumber $ read text
 parseObject :: String -> Fragile JsonObject
 parseObject xs  = maybe (emlNonBracketPair '{' '}') parseObjectContents (bracketContent xs '{' '}')
 
+{-
+ - ',' で区切られた文字列をパースする
+ -
+ - (String -> Fragile a)  パース関数
+ - String                 文字列
+ - Fragile a              エラーメッセージかパース結果の要素リスト
+ -}
+parseCollection :: (String -> Fragile a) -> String -> Fragile [a]
+parseCollection f xs  = (\x ->  case partitionEithers $ map f x of
+                                ([], y)   -> Right y
+                                (y:_, _)  -> Left y
+                        ) =<< divideTopLevel xs ','
+
 -- JSONのオブジェクトの要素をパースする
 parseObjectContents :: String -> Fragile JsonObject
-parseObjectContents xs  = case divideTopLevel xs ',' of
-                          Left x  ->  Left x
-                          Right x ->  case partitionEithers $ map parsePair x of
-                                      ([], x)   -> Right x
-                                      (x:_, _)  -> Left x
+parseObjectContents xs  = parseCollection parsePair xs
 
 -- JSONの配列をパースする
 parseArray :: String -> Fragile [JsonValue]
-parseArray xs = case bracketContent xs '[' ']' of
-                Nothing ->  emlNonBracketPair '[' ']'
-                Just x  ->  case divideTopLevel x ',' of
-                            Left x  ->  Left x
-                            Right x ->  case partitionEithers $ map parseValue x of
-                                        ([], x)   -> Right x
-                                        (x:_, _)  -> Left x
+parseArray xs = maybe (emlNonBracketPair '[' ']') (parseCollection parseValue) $ bracketContent xs '[' ']'
 
 -- トップレベルにある文字で文字列を分割する
 divideTopLevel :: String -> Char -> Fragile [String]
@@ -145,7 +148,7 @@ divideTopLevelWork "" _ (s:stack)                 = emlNonCloseBracket s        
 divideTopLevelWork "" _ _                         = Right [""]
 divideTopLevelWork ('{':xs) c stack               = addRightFirstHead '{' $ divideTopLevelWork xs c ('}':stack) -- オブジェクトの開始文字が見つかったので、スタックに終了文字を追加
 divideTopLevelWork ('[':xs) c stack               = addRightFirstHead '[' $ divideTopLevelWork xs c (']':stack) -- 配列の開始文字が見つかったので、スタックに終了文字を追加
-divideTopLevelWork (x:xs) c []        | x == c    = fmap (\x -> "":x) $ divideTopLevelWork xs c []              -- 目的の文字が見つかった
+divideTopLevelWork (x:xs) c []        | x == c    = ("":) <$> divideTopLevelWork xs c []                        -- 目的の文字が見つかった
                                       | otherwise = addRightFirstHead x $ divideTopLevelWork xs c []
 divideTopLevelWork (x:xs) c (s:stack) | x == s    = addRightFirstHead x $ divideTopLevelWork xs c stack         -- スタックにある文字が見つかったので、スタックから削除
                                       | otherwise = addRightFirstHead x $ divideTopLevelWork xs c (s:stack)
