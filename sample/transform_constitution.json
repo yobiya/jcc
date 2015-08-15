@@ -1,0 +1,20 @@
+{
+  "version": 0,
+  "entry": "Main",
+  "object": {
+    "Main": {
+      "transform": "[Transform]"
+    },
+    "Transform": {
+      "position": "Vector3",
+      "rotation": ["none", "Vector3"],
+      "scale": ["none", "number", "Vector3"]
+    },
+    "Vector3": {
+      "x": "number",
+      "y": "number",
+      "z": "number"
+    }
+  }
+}
+
