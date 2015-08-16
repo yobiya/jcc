@@ -5,7 +5,6 @@ module Json (
   JsonObject,
   JsonArray,
   parseJsonFile,
-  jsonObjectContents,
   bracketContent,
   valueToText
 ) where 
@@ -44,16 +43,6 @@ parseJsonFile path  = either
  -}
 parseJson :: String -> Fragile JsonObject
 parseJson text = parseObject $ removeWhiteSpace text
-
-{-
- - JsonValueの型がJsonObjectの場合に要素を取り出す
- -
- - JsonValue  判定されるJsonValue
- - [JsonPair] 取り出されたJsonObjectの内容
- -}
-jsonObjectContents :: JsonValue -> [JsonPair]
-jsonObjectContents (JsonObject o) = o
-jsonObjectContents _              = []
 
 {-
  - 囲まれている要素を取り出す
